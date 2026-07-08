@@ -12,36 +12,78 @@ const gradients = [
   'linear-gradient(160deg, #46d0c4, #1f6360)',
 ]
 
-function build(names, extra = () => ({})) {
+const providerCatalog = {
+  prime: { label: 'Prime Video', bg: '#00a8e1', fg: '#0b1a2b' },
+  apple: { label: 'Apple TV', bg: '#111111', fg: '#fff' },
+  disney: { label: 'Disney+', bg: '#113ccf', fg: '#fff' },
+  netflix: { label: 'Netflix', bg: '#e50914', fg: '#fff' },
+  spotify: { label: 'Spotify', bg: '#1db954', fg: '#04120a' },
+  steam: { label: 'Steam', bg: '#1b2838', fg: '#fff' },
+}
+
+const genresByType = {
+  movie: ['Action • Sci-Fi', 'Drama • Thriller', 'Comedy • Romance', 'Horror • Mystery'],
+  show: ['Drama • Mystery', 'Action • Thriller', 'Comedy', 'Sci-Fi • Drama'],
+  music: ['Indie Pop', 'Synthwave', 'Alt Rock', 'Lo-fi'],
+  game: ['Action • RPG', 'Open World', 'Strategy', 'Adventure'],
+}
+
+const providersByType = {
+  movie: [['prime', 'apple'], ['netflix'], ['disney', 'apple'], ['prime']],
+  show: [['netflix'], ['disney'], ['prime', 'apple'], ['netflix', 'prime']],
+  music: [['spotify'], ['spotify', 'apple'], ['spotify'], ['apple']],
+  game: [['steam'], ['steam'], ['steam'], ['steam']],
+}
+
+const durationLabelByType = { movie: 'Runtime', show: 'Runtime', music: 'Duration', game: 'Playtime' }
+const tagByType = { movie: 'Movie', show: 'Series', music: 'Song', game: 'Game' }
+const sourceByType = { movie: 'TMDB', show: 'TMDB', music: 'Spotify', game: 'IGDB' }
+
+function build(type, names) {
   return names.map((title, i) => ({
     id: `${title}-${i}`,
+    type,
+    tag: tagByType[type],
     title,
     gradient: gradients[i % gradients.length],
-    ...extra(i),
+    genre: genresByType[type][i % genresByType[type].length],
+    date: `0${(i % 9) + 1}/12/2026`,
+    duration:
+      type === 'music'
+        ? `${2 + (i % 3)}:${String((15 + i * 7) % 60).padStart(2, '0')}`
+        : `${1 + (i % 2)}h ${20 + i * 3}m`,
+    durationLabel: durationLabelByType[type],
+    language: 'English',
+    source: sourceByType[type],
+    description:
+      'A short synopsis will go here once real catalog data is connected. For now this is placeholder copy so the layout can be reviewed end to end.',
+    providers: providersByType[type][i % providersByType[type].length].map((key) => ({
+      key,
+      ...providerCatalog[key],
+    })),
   }))
 }
 
-export const movies = build(
-  ['Silver Horizon', 'Midnight Runner', 'Glass Orbit', 'Echo Valley', 'Paper Tigers', 'Last Frequency', 'Amber Road', 'Static Bloom'],
-  (i) => ({
-    genre: ['Action • Sci-Fi', 'Drama • Thriller', 'Comedy • Romance', 'Horror • Mystery'][i % 4],
-    date: `0${(i % 9) + 1}/12/2026`,
-    duration: `${1 + (i % 2)}h ${20 + i * 3}m`,
-    description:
-      'A short synopsis will go here once real catalog data is connected. For now this is placeholder copy so the layout can be reviewed end to end.',
-  })
-)
+export const movies = build('movie', [
+  'Silver Horizon', 'Midnight Runner', 'Glass Orbit', 'Echo Valley', 'Paper Tigers', 'Last Frequency', 'Amber Road', 'Static Bloom',
+])
 
-export const shows = build([
+export const shows = build('show', [
   'The Long Dark', 'Cedar Heights', 'Vantage Point', 'Nightfall Ave', 'Blue Static', 'Hollow Court', 'Redline', 'The Understudy',
 ])
 
-export const music = build([
+export const music = build('music', [
   'Low Tide', 'Neon Fields', 'Paper Moon', 'Concrete Bloom', 'Slow Static', 'Amber Skies', 'Glasshouse', 'Wire & Wax',
 ])
 
-export const games = build([
+export const games = build('game', [
   'Ashen Reach', 'Nightshift', 'Ironvale', 'Drift Protocol', 'Hollow Sky', 'Faultline', 'Rust & Ruin', 'Copper Sun',
 ])
 
 export const heroSlides = movies.slice(0, 5)
+
+export const allMedia = [...movies, ...shows, ...music, ...games]
+
+export function getMediaById(id) {
+  return allMedia.find((item) => item.id === id)
+}
