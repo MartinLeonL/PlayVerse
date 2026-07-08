@@ -40,10 +40,14 @@ function Navbar({ activeNav = 'home', onNavChange }) {
           </li>
         ))}
         <li>
-          <button type="button" className="nav-link">
-            <Search size={16} />
-            Search
-          </button>
+            <button
+            type="button"
+            className={activeNav === 'search' ? 'nav-link active' : 'nav-link'}
+            onClick={() => navigate('/search')}
+            >
+                <Search size={16} />
+                Search
+            </button>
         </li>
       </ul>
 
