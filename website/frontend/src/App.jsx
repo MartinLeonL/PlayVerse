@@ -4,6 +4,7 @@ import Home from './pages/Home.jsx'
 import MediaDetail from './pages/MediaDetail.jsx'
 import Account from './pages/Account.jsx'
 import Search from './pages/Search.jsx'
+import Playlists from './pages/Playlists.jsx'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/media/:id" element={<MediaDetail />} />
       <Route path="/account" element={<Account />} />
       <Route path="/search" element={<Search />} />
+      <Route path="/playlists" element={<Playlists />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

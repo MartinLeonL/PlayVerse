@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  ChevronRight, Plus, Play, Star, Pencil, Clock, Tag, Globe, Database, CalendarDays,
+  ChevronRight, Plus, Check, Play, Star, Pencil, Clock, Tag, Globe, Database, CalendarDays,
 } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import RatingModal from '../components/RatingModal.jsx'
 import { getMediaById } from '../data/mockData.js'
+import { isInPlaylist, togglePlaylist } from '../utils/playlist.js'
 import './MediaDetail.css'
 
 const navKeyByType = { movie: 'movies', show: 'shows', music: 'music', game: 'games' }
@@ -26,12 +27,16 @@ function MediaDetail() {
   const navigate = useNavigate()
   const item = useMemo(() => getMediaById(decodeURIComponent(id ?? '')), [id])
 
-  const [rating, setRating] = useState(() => {
-    if (!item) return 0
-    const stored = window.localStorage.getItem(ratingKey(item.id))
-    return stored ? Number(stored) : 0
-  })
+  const [rating, setRating] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
+  const [inPlaylist, setInPlaylist] = useState(false)
+
+  useEffect(() => {
+    if (!item) return
+    const stored = window.localStorage.getItem(ratingKey(item.id))
+    setRating(stored ? Number(stored) : 0)
+    setInPlaylist(isInPlaylist(item.id))
+  }, [item])
 
   if (!item) {
     return (
@@ -53,6 +58,10 @@ function MediaDetail() {
     setRating(value)
     window.localStorage.setItem(ratingKey(item.id), String(value))
     setModalOpen(false)
+  }
+
+  function handleTogglePlaylist() {
+    setInPlaylist(togglePlaylist(item.id))
   }
 
   return (
@@ -82,7 +91,10 @@ function MediaDetail() {
             <p className="detail-genre">{item.genre}</p>
             <p className="detail-desc">{item.description}</p>
             <div className="detail-actions">
-              <button type="button" className="hero-playlist"><Plus size={16} /> Playlist</button>
+              <button type="button" className="hero-playlist" onClick={handleTogglePlaylist}>
+                {inPlaylist ? <Check size={16} /> : <Plus size={16} />}
+                {inPlaylist ? 'In Playlist' : 'Playlist'}
+              </button>
               <button type="button" className="hero-view"><Play size={16} /> Trailer</button>
             </div>
           </div>
