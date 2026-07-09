@@ -1,0 +1,243 @@
+.login-page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--pv-bg);
+}
+
+.login-top {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 560px;
+  padding: 40px 60px;
+}
+
+.collage {
+  flex: 1;
+  height: 480px;
+  display: flex;
+  gap: 6px;
+  margin-right: 380px;
+}
+
+.panel {
+  flex: 1;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  transform: skewX(-6deg);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.panel-badge {
+  transform: skewX(6deg);
+  margin: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--pv-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.login-card {
+  position: absolute;
+  right: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 320px;
+  background: var(--pv-surface);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 32px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--pv-purple);
+  margin-bottom: 24px;
+}
+
+.login-tabs {
+  display: flex;
+  align-items: center;
+  background: #f3f0fa;
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  border-radius: 999px;
+  color: var(--pv-text-muted);
+  font-weight: 600;
+}
+
+.tab.active {
+  background: var(--pv-surface);
+  color: var(--pv-text);
+  box-shadow: var(--shadow);
+}
+
+.tab-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--pv-border);
+}
+
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pv-text);
+  margin: 16px 0 6px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--pv-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #faf9fd;
+}
+
+.field-icon {
+  color: var(--pv-text-muted);
+  flex-shrink: 0;
+}
+
+.field input {
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  color: var(--pv-text);
+}
+
+.field-toggle {
+  border: none;
+  background: transparent;
+  color: var(--pv-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.submit-btn {
+  width: 100%;
+  margin-top: 24px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pv-purple-strong);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.submit-btn:hover {
+  background: var(--pv-purple);
+}
+
+.switch-mode {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--pv-text-muted);
+}
+
+.switch-mode button {
+  border: none;
+  background: transparent;
+  color: var(--pv-purple);
+  font-weight: 600;
+  padding: 0;
+}
+
+.login-banner {
+  background: var(--pv-purple);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 60px;
+  gap: 24px;
+}
+
+.banner-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.banner-icon {
+  background: #fff;
+  color: var(--pv-purple);
+  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.banner-text h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.banner-text p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.banner-btn {
+  background: #fff;
+  color: var(--pv-purple);
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .login-top {
+    flex-direction: column;
+    padding: 24px;
+  }
+  .collage {
+    width: 100%;
+    height: 220px;
+    margin-right: 0;
+  }
+  .login-card {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin-top: 24px;
+  }
+  .login-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+  }
+}
