@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json()); 
 
 // MongoDB Connection Setup
-const url = process.env.MONGODB_URI || 'mongodb+srv://student:1234@largeproject.7nxvpcl.mongodb.net/?appName=LargeProject';
+const url = process.env.MONGODB_URI || '';
 const client = new MongoClient(url);
 
 async function connectDB() {
