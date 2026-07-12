@@ -23,7 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
-backend/.env
-frontend/.env
-backend/node_modules/
-frontend/node_modules/
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
