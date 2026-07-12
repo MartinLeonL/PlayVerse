@@ -10,13 +10,10 @@
   z-index: 10;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  color: var(--pv-purple);
-  font-size: 18px;
+.navbar-brand > img {
+  height: 180px;
+  margin-top: -70px;
+  margin-bottom: -70px;
 }
 
 .nav-links {
