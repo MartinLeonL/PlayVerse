@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../widgets/app_shell.dart';
 import '../widgets/editable_field.dart';
 
 class AccountPage extends StatefulWidget {
@@ -48,35 +49,7 @@ class _AccountPageState extends State<AccountPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE1D9F0),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7C6FD8),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            ColorFiltered(
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-              child: Image.asset('assets/images/logo.png', height: 32),
-            ),
-          ],
-        ),
-        actions: [
-          const Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: Text('Profile', style: TextStyle(color: Colors.white, fontSize: 16)),
-          ),
-          const CircleAvatar(
-            backgroundColor: Colors.deepPurple,
-            child: Text('B', style: TextStyle(color: Colors.white)),
-          ),
-          const SizedBox(width: 16),
-        ],
-      ),
+    return AppShell(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Stack(

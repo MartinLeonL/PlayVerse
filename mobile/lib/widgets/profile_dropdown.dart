@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../pages/account_page.dart';
+import '../pages/auth_page.dart';
 
 class ProfileDropdown extends StatelessWidget {
   final bool visible;
@@ -37,13 +38,19 @@ class ProfileDropdown extends StatelessWidget {
                         return InkWell(
                           onTap: () {
                             onClose();
-                            if(item['label'] =='Account') {
+                            if (item['label'] == 'Account') {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (context) => const AccountPage()),
                               );
-                              //TODO wire up playlists and logout
+                            } else if (item['label'] == 'Sign Out') {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (context) => const AuthPage()),
+                                (route) => false,
+                              );
                             }
+                            // TODO: wire up playlists 
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
