@@ -1,48 +1,10 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_shell.dart';
 import '../widgets/home_banner.dart';
 import '../widgets/media_row.dart';
-import '../widgets/nav_dropdown.dart';
-import '../widgets/profile_dropdown.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  bool _showNavMenu = false;
-  bool _showProfileMenu = false;
-
-  void _toggleNavMenu() {
-    setState(() {
-      _showNavMenu = !_showNavMenu;
-      _showProfileMenu = false;
-    });
-  }
-
-  void _toggleProfileMenu() {
-    setState(() {
-      _showProfileMenu = !_showProfileMenu;
-      _showNavMenu = false;
-    });
-  }
-
-  void _closeMenus() {
-    setState(() {
-      _showNavMenu = false;
-      _showProfileMenu = false;
-    });
-  }
-
-  void _goHome() {
-    _closeMenus();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,69 +41,25 @@ class _HomePageState extends State<HomePage> {
       MediaItem(title: 'Zelda: Echoes', imageUrl: 'https://image.tmdb.org/t/p/w342/lFf6LLrQjYldcZItzOkGmMMigP7.jpg'),
     ];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFE1D9F0),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7C6FD8),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: _toggleNavMenu,
-        ),
-        title: GestureDetector(
-          onTap: _goHome,
-          child: Row(
-            children: [
-              ColorFiltered(
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                child: Image.asset('assets/images/logo.png', height: 36),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          const Icon(Icons.search, color: Colors.white),
-          const SizedBox(width: 16),
-          GestureDetector(
-            onTap: _toggleProfileMenu,
-            child: const Row(
-              children: [
-                Text('Jane Doe', style: TextStyle(color: Colors.white, fontSize: 16)),
-                Icon(Icons.arrow_drop_down, color: Colors.white),
-              ],
+    return AppShell(
+      body: ListView(
+        padding: const EdgeInsets.only(top: 16, bottom: 24),
+        children: [
+          const HomeBanner(),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              'Trending',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.deepPurple[700]),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(height: 12),
+          MediaRow(categoryTitle: 'Movies', items: movies),
+          MediaRow(categoryTitle: 'Shows', items: shows),
+          MediaRow(categoryTitle: 'Music', items: music),
+          MediaRow(categoryTitle: 'Games', items: games),
         ],
-      ),
-      body: GestureDetector(
-        onTap: _closeMenus,
-        behavior: HitTestBehavior.translucent,
-        child: Stack(
-          children: [
-            ListView(
-              padding: const EdgeInsets.only(top: 16, bottom: 24),
-              children: [
-                const HomeBanner(),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Trending',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.deepPurple[700]),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                MediaRow(categoryTitle: 'Movies', items: movies),
-                MediaRow(categoryTitle: 'Shows', items: shows),
-                MediaRow(categoryTitle: 'Music', items: music),
-                MediaRow(categoryTitle: 'Games', items: games),
-              ],
-            ),
-            NavDropdown(visible: _showNavMenu, onClose: _closeMenus),
-            ProfileDropdown(visible: _showProfileMenu, onClose: _closeMenus),
-          ],
-        ),
       ),
     );
   }

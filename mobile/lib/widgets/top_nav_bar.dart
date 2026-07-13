@@ -59,8 +59,9 @@ class _TopNavBarState extends State<TopNavBar> {
   Widget build(BuildContext context) {
     final current = _mediaTypes[_currentIndex];
 
+    final topPadding = MediaQuery.of(context).padding.top;
     return Positioned(
-      top: 60,
+      top: topPadding +12,
       left: 20,
       right: 20,
       child: Row(
