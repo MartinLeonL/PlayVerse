@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/editable_field.dart';
 
@@ -79,10 +80,10 @@ class _AccountPageState extends State<AccountPage> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () => _confirmDelete(context),
-                          icon: const Icon(Icons.delete, color: Colors.black87),
-                          label: const Text('Delete Account', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.delete, color: AppColors.onDestructive),
+                          label: const Text('Delete Account', style: TextStyle(color: AppColors.onDestructive, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE85D5D),
+                            backgroundColor: AppColors.destructive,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),

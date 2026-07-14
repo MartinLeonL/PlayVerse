@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class BottomInfoBar extends StatelessWidget {
   const BottomInfoBar({super.key});
@@ -10,7 +11,7 @@ class BottomInfoBar extends StatelessWidget {
       right: 0,
       bottom: 0,
       child: Container(
-        color: Colors.deepPurple[700],
+        color: AppColors.primaryDark,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         child: Row(
           children: [

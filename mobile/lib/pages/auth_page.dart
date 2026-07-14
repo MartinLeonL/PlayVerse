@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_background.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/auth_card_shell.dart';
@@ -54,7 +55,7 @@ class _AuthPageState extends State<AuthPage> {
                             TextSpan(text: _isLogin ? "Don't have an account? " : 'Already have one? '),
                             TextSpan(
                               text: _isLogin ? 'Register' : 'Login',
-                              style: TextStyle(color: Colors.deepPurple[400], fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),

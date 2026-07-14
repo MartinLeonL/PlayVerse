@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_background.dart';
 import '../widgets/top_nav_bar.dart';
 import '../widgets/auth_card_shell.dart';
@@ -85,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: ElevatedButton(
                       onPressed: () {},
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63C4),
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
@@ -113,7 +114,7 @@ class _LoginPageState extends State<LoginPage> {
                             const TextSpan(text: "Don't have an account? "),
                             TextSpan(
                               text: 'Register',
-                              style: TextStyle(color: Colors.deepPurple[400], fontWeight: FontWeight.bold),
+                              style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
