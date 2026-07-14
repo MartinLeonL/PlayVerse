@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../pages/media_detail_page.dart';
+import '../services/playlist_store.dart';
+import '../theme/app_colors.dart';
+import 'media_row.dart';
 
 class BannerItem {
   final String title;
@@ -59,6 +63,7 @@ class _HomeBannerState extends State<HomeBanner> {
             },
             itemBuilder: (context, index) {
               final banner = _banners[index];
+              final mediaItem = MediaItem(title: banner.title, imageUrl: banner.imageUrl);
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ClipRRect(
@@ -116,9 +121,20 @@ class _HomeBannerState extends State<HomeBanner> {
                         bottom: 16,
                         child: Row(
                           children: [
-                            _pillButton('View', Icons.chevron_right),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => MediaDetailPage(item: mediaItem)),
+                                );
+                              },
+                              child: _pillButton('View', Icons.chevron_right),
+                            ),
                             const SizedBox(width: 8),
-                            _pillButton('Playlist', Icons.add),
+                            GestureDetector(
+                              onTap: () => _showPlaylistPicker(context, mediaItem),
+                              child: _pillButton('Playlist', Icons.add),
+                            ),
                           ],
                         ),
                       ),
@@ -140,13 +156,121 @@ class _HomeBannerState extends State<HomeBanner> {
               height: 8,
               width: isActive ? 24 : 8,
               decoration: BoxDecoration(
-                color: isActive ? Colors.deepPurple : Colors.deepPurple[100],
+                color: isActive ? AppColors.primary : AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(4),
               ),
             );
           }),
         ),
       ],
+    );
+  }
+
+  void _showPlaylistPicker(BuildContext context, MediaItem item) {
+    final store = PlaylistStore.instance;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text('Add to Playlist', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                const Divider(height: 1),
+                ...store.playlists.keys.map((playlistName) {
+                  return _menuTile(
+                    context,
+                    icon: Icons.playlist_play,
+                    label: playlistName,
+                    onTap: () {
+                      store.addItemToPlaylist(playlistName, item);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Added "${item.title}" to $playlistName')),
+                      );
+                    },
+                  );
+                }),
+                _menuTile(
+                  context,
+                  icon: Icons.add_circle_outline,
+                  label: 'New Playlist',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showCreatePlaylistDialog(context, item);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCreatePlaylistDialog(BuildContext context, MediaItem item) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('New Playlist'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Playlist name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                final store = PlaylistStore.instance;
+                store.createPlaylist(name);
+                store.addItemToPlaylist(name, item);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Added "${item.title}" to $name')),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _menuTile(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.primary),
+            const SizedBox(width: 16),
+            Text(label, style: const TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -165,7 +289,7 @@ class _HomeBannerState extends State<HomeBanner> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.deepPurple.withValues(alpha: 0.8),
+        color: AppColors.primary.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

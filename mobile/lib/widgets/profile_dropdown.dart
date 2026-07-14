@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../pages/account_page.dart';
 import '../pages/auth_page.dart';
+import '../pages/playlists_page.dart';
+import '../theme/app_colors.dart';
 
 class ProfileDropdown extends StatelessWidget {
   final bool visible;
@@ -20,7 +22,7 @@ class ProfileDropdown extends StatelessWidget {
       top: 0,
       right: 0,
       child: Material(
-        color: const Color(0xFF7C6FD8),
+        color: AppColors.primary,
         borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24)),
         elevation: visible ? 8 : 0,
         child: ClipRect(
@@ -49,8 +51,12 @@ class ProfileDropdown extends StatelessWidget {
                                 MaterialPageRoute(builder: (context) => const AuthPage()),
                                 (route) => false,
                               );
+                            } else if (item['label'] == 'Playlists') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PlaylistsPage()),
+                              );
                             }
-                            // TODO: wire up playlists 
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),

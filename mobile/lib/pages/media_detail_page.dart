@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/media_row.dart';
 
@@ -86,7 +87,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
               Text(
                 item.genres.join('   '),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.black54, fontSize: 14),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -106,10 +107,10 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
                       onPressed: () {
                         // TODO: wire up real playlist logic once a backend exists
                       },
-                      icon: const Icon(Icons.add, color: Colors.deepPurple),
-                      label: const Text('Playlist', style: TextStyle(color: Colors.deepPurple)),
+                      icon: const Icon(Icons.add, color: AppColors.primary),
+                      label: const Text('Playlist', style: TextStyle(color: AppColors.primary)),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.deepPurple),
+                        side: const BorderSide(color: AppColors.primary),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
@@ -124,7 +125,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
                       icon: const Icon(Icons.play_arrow, color: Colors.white),
                       label: const Text('Trailer', style: TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63C4),
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
@@ -139,7 +140,18 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Your Score', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: AppColors.accent, size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        item.averageRating != null
+                            ? '${item.averageRating!.toStringAsFixed(1)} (${item.ratingCount})'
+                            : 'No ratings yet',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                   Row(
                     children: [
                       Text(
@@ -165,7 +177,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
               child: item.platforms.isEmpty
                   ? const Text(
                       'Not currently available on any tracked platform.',
-                      style: TextStyle(color: Colors.black54, fontSize: 14),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                     )
                   : Wrap(
                       spacing: 10,
@@ -216,7 +228,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
             return IconButton(
               icon: Icon(
                 (_userScore ?? 0) >= score ? Icons.star : Icons.star_border,
-                color: Colors.amber,
+                color: AppColors.accent,
               ),
               onPressed: () {
                 setState(() => _userScore = score);
@@ -279,7 +291,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
   Widget _infoColumn(String label, String value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         const SizedBox(height: 4),
         Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
       ],

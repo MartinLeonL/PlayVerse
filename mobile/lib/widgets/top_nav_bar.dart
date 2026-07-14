@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class TopNavBar extends StatefulWidget {
   const TopNavBar({super.key});
@@ -83,12 +84,12 @@ class _TopNavBarState extends State<TopNavBar> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(current['icon'], color: Colors.deepPurple, size: 18),
+                  Icon(current['icon'], color: AppColors.primary, size: 18),
                   const SizedBox(width: 6),
                   Text(
                     current['label'],
                     style: const TextStyle(
-                      color: Colors.deepPurple,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

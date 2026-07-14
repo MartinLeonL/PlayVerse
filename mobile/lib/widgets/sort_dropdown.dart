@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 enum SortOption { recent, aToZ, zToA, trending, highestRated, lowestRated }
 
@@ -34,7 +35,7 @@ class _SortDropdownState extends State<SortDropdown> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF7C6FD8),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -57,7 +58,7 @@ class _SortDropdownState extends State<SortDropdown> {
                     margin: const EdgeInsets.only(top: 6),
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7C6FD8),
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
