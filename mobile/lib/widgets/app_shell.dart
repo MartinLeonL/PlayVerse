@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../pages/home_page.dart';
+import '../pages/search_page.dart';
+import '../theme/app_colors.dart';
 import 'nav_dropdown.dart';
 import 'profile_dropdown.dart';
 
@@ -16,6 +19,13 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   bool _showNavMenu = false;
   bool _showProfileMenu = false;
+
+  Future<String> _getUserName() async {
+    final storage = const FlutterSecureStorage();
+    final firstName = await storage.read(key: 'firstName') ?? 'Jane';
+    final lastName = await storage.read(key: 'lastName') ?? 'Doe';
+    return '$firstName $lastName';
+  }
 
   void _toggleNavMenu() {
     setState(() {
@@ -55,9 +65,9 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE1D9F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF7C6FD8),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white),
@@ -69,20 +79,38 @@ class _AppShellState extends State<AppShell> {
             children: [
               ColorFiltered(
                 colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                child: Image.asset('assets/images/logo.png', height: 36),
+                child: Image.asset('assets/images/logo.png', height: 42),
               ),
             ],
           ),
         ),
         actions: [
-          const Icon(Icons.search, color: Colors.white),
+          GestureDetector(
+            onTap: () {
+              _closeMenus();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchPage()),
+              );
+            },
+            child: const Icon(Icons.search, color: Colors.white),
+          ),
           const SizedBox(width: 16),
+          // Inside the actions of the AppBar
           GestureDetector(
             onTap: _toggleProfileMenu,
-            child: const Row(
+            child: Row(
               children: [
-                Text('Jane Doe', style: TextStyle(color: Colors.white, fontSize: 16)),
-                Icon(Icons.arrow_drop_down, color: Colors.white),
+                FutureBuilder<String>(
+                  future: _getUserName(),
+                  builder: (context, snapshot) {
+                    return Text(
+                      snapshot.data ?? 'Jane Doe',
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    );
+                  },
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.white),
               ],
             ),
           ),
@@ -95,7 +123,7 @@ class _AppShellState extends State<AppShell> {
         child: Stack(
           children: [
             RefreshIndicator(
-              color: const Color(0xFF7C6FD8),
+              color: AppColors.primary,
               onRefresh: widget.onRefresh ?? _defaultRefresh,
               child: widget.body,
             ),

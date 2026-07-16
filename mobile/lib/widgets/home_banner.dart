@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../pages/media_detail_page.dart';
+import '../services/api_service.dart';
+import '../services/playlist_store.dart';
+import '../theme/app_colors.dart';
+import 'media_row.dart';
 
 class BannerItem {
   final String title;
@@ -20,21 +25,9 @@ class _HomeBannerState extends State<HomeBanner> {
   int _currentPage = 0;
 
   final List<BannerItem> _banners = [
-    BannerItem(
-      title: 'Superman',
-      tag: 'Movie',
-      imageUrl: 'https://image.tmdb.org/t/p/w780/8VG8fDNiy50H4FedGwdSVUPoaJe.jpg',
-    ),
-    BannerItem(
-      title: 'The Last Airbender',
-      tag: 'Show',
-      imageUrl: 'https://image.tmdb.org/t/p/w780/qYTsRQNu1MdxTQ0BE0F7YOAOROq.jpg',
-    ),
-    BannerItem(
-      title: 'The Boys',
-      tag: 'Show',
-      imageUrl: 'https://image.tmdb.org/t/p/w780/2zmTngn1tYC1AvfnrFLhxeD82hz.jpg',
-    ),
+    BannerItem(title: 'Superman', tag: 'Movie', imageUrl: 'https://image.tmdb.org/t/p/w780/8VG8fDNiy50H4FedGwdSVUPoaJe.jpg'),
+    BannerItem(title: 'The Last Airbender', tag: 'Show', imageUrl: 'https://image.tmdb.org/t/p/w780/qYTsRQNu1MdxTQ0BE0F7YOAOROq.jpg'),
+    BannerItem(title: 'The Boys', tag: 'Show', imageUrl: 'https://image.tmdb.org/t/p/w780/2zmTngn1tYC1AvfnrFLhxeD82hz.jpg'),
   ];
 
   @override
@@ -54,11 +47,10 @@ class _HomeBannerState extends State<HomeBanner> {
           child: PageView.builder(
             controller: _pageController,
             itemCount: _banners.length,
-            onPageChanged: (index) {
-              setState(() => _currentPage = index);
-            },
+            onPageChanged: (index) => setState(() => _currentPage = index),
             itemBuilder: (context, index) {
               final banner = _banners[index];
+              final mediaItem = MediaItem(title: banner.title, imageUrl: banner.imageUrl);
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ClipRRect(
@@ -69,9 +61,7 @@ class _HomeBannerState extends State<HomeBanner> {
                         child: Image.network(
                           banner.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: Colors.grey[800],
-                          ),
+                          errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800]),
                         ),
                       ),
                       Positioned.fill(
@@ -80,10 +70,7 @@ class _HomeBannerState extends State<HomeBanner> {
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.75),
-                              ],
+                              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.75)],
                             ),
                           ),
                         ),
@@ -104,11 +91,7 @@ class _HomeBannerState extends State<HomeBanner> {
                         bottom: 60,
                         child: Text(
                           banner.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Positioned(
@@ -116,9 +99,20 @@ class _HomeBannerState extends State<HomeBanner> {
                         bottom: 16,
                         child: Row(
                           children: [
-                            _pillButton('View', Icons.chevron_right),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => MediaDetailPage(item: mediaItem)),
+                                );
+                              },
+                              child: _pillButton('View', Icons.chevron_right),
+                            ),
                             const SizedBox(width: 8),
-                            _pillButton('Playlist', Icons.add),
+                            GestureDetector(
+                              onTap: () => _showPlaylistPicker(context, mediaItem),
+                              child: _pillButton('Playlist', Icons.add),
+                            ),
                           ],
                         ),
                       ),
@@ -140,13 +134,69 @@ class _HomeBannerState extends State<HomeBanner> {
               height: 8,
               width: isActive ? 24 : 8,
               decoration: BoxDecoration(
-                color: isActive ? Colors.deepPurple : Colors.deepPurple[100],
+                color: isActive ? AppColors.primary : AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(4),
               ),
             );
           }),
         ),
       ],
+    );
+  }
+
+  void _showPlaylistPicker(BuildContext context, MediaItem item) {
+    final store = PlaylistStore.instance;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text('Add to Playlist', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                const Divider(height: 1),
+                ...store.playlists.keys.map((playlistName) {
+                  return ListTile(
+                    leading: const Icon(Icons.playlist_play, color: AppColors.primary),
+                    title: Text(playlistName),
+                    onTap: () async {
+                      final userId = await ApiService().getCurrentUserId();
+                      if (userId != null) {
+                        await ApiService().addMedia(
+                          userId: userId,
+                          mediaId: item.title,
+                          title: item.title,
+                          mediaType: 'movie',
+                        );
+                        store.addItemToPlaylist(playlistName, item);
+                      }
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Added "${item.title}" to $playlistName')),
+                      );
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -165,7 +215,7 @@ class _HomeBannerState extends State<HomeBanner> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.deepPurple.withValues(alpha: 0.8),
+        color: AppColors.primary.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
