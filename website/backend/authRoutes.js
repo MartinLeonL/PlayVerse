@@ -923,4 +923,168 @@ router.delete("/playlists/items", requireAuth, async (req, res, next) => {
   }
 });
 
+
+const validRatingTypes = new Set([
+  "movie",
+  "show",
+  "music",
+  "game",
+]);
+
+
+router.get("/ratings/:mediaId", requireAuth, async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.userId)) {
+      return res.status(401).json({
+        message: "Invalid login session.",
+      });
+    }
+
+    const mediaId = String(req.params.mediaId || "").trim();
+    const mediaType = String(req.query.mediaType || "").trim();
+
+    if (!mediaId || !validRatingTypes.has(mediaType)) {
+      return res.status(400).json({
+        message: "A valid media ID and media type are required.",
+      });
+    }
+
+    const user = await getUsersCollection().findOne(
+      {
+        _id: new ObjectId(req.userId),
+      },
+      {
+        projection: {
+          ratings: 1,
+        },
+      },
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Account not found.",
+      });
+    }
+
+    const rating =
+      (user.ratings || []).find(
+        (currentRating) =>
+          String(currentRating.mediaId) === mediaId &&
+          currentRating.mediaType === mediaType,
+      ) || null;
+
+    return res.json({
+      rating,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+router.put("/ratings/:mediaId", requireAuth, async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.userId)) {
+      return res.status(401).json({
+        message: "Invalid login session.",
+      });
+    }
+
+    const mediaId = String(req.params.mediaId || "").trim();
+    const mediaType = String(req.body.mediaType || "").trim();
+    const score = Number(req.body.score);
+    const note = String(req.body.note || "").trim();
+
+    if (!mediaId || !validRatingTypes.has(mediaType)) {
+      return res.status(400).json({
+        message: "A valid media ID and media type are required.",
+      });
+    }
+
+    if (!Number.isInteger(score) || score < 1 || score > 5) {
+      return res.status(400).json({
+        message: "Score must be a whole number from 1 to 5.",
+      });
+    }
+
+    if (note.length > 500) {
+      return res.status(400).json({
+        message: "The personal note cannot exceed 500 characters.",
+      });
+    }
+
+    const users = getUsersCollection();
+    const userId = new ObjectId(req.userId);
+    const now = new Date();
+
+    /*
+     * First try to update an existing rating.
+     */
+    const updateResult = await users.updateOne(
+      {
+        _id: userId,
+        ratings: {
+          $elemMatch: {
+            mediaId,
+            mediaType,
+          },
+        },
+      },
+      {
+        $set: {
+          "ratings.$.score": score,
+          "ratings.$.note": note,
+          "ratings.$.updatedAt": now,
+          updatedAt: now,
+        },
+      },
+    );
+
+    /*
+     * No matching rating existed, so add a new one.
+     */
+    if (updateResult.matchedCount === 0) {
+      const insertResult = await users.updateOne(
+        {
+          _id: userId,
+        },
+        {
+          $push: {
+            ratings: {
+              mediaId,
+              mediaType,
+              score,
+              note,
+              createdAt: now,
+              updatedAt: now,
+            },
+          },
+          $set: {
+            updatedAt: now,
+          },
+        },
+      );
+
+      if (insertResult.matchedCount === 0) {
+        return res.status(404).json({
+          message: "Account not found.",
+        });
+      }
+    }
+
+    return res.json({
+      message: "Your rating was saved.",
+      rating: {
+        mediaId,
+        mediaType,
+        score,
+        note,
+        updatedAt: now,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

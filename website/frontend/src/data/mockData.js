@@ -160,6 +160,7 @@ export const movies = [
     type: "movie",
     tag: "Movie",
     title: "Mortal Kombat 2",
+    trailerKey: "b24oG7qCwp4",
 
     posterImage: "/mockImages/mortalKombatPoster.webp",
     backdropImage: "/mockImages/mortalKombatBackdrop.webp",
@@ -187,6 +188,7 @@ export const movies = [
     type: "movie",
     tag: "Movie",
     title: "Superman",
+    trailerKey: "Ox8ZLF6cGM0",
 
     posterImage: "/mockImages/supermanPoster.webp",
     backdropImage: "/mockImages/supermanBackdrop.webp",
@@ -214,6 +216,7 @@ export const movies = [
     type: "movie",
     tag: "Movie",
     title: "Michael",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/michaelPoster.webp",
     backdropImage: "/mockImages/michaelBackdrop.webp",
@@ -241,6 +244,7 @@ export const movies = [
     type: "movie",
     tag: "Movie",
     title: "Backrooms",
+    trailerKey: "0HjdiohVOik",
 
     posterImage: "/mockImages/backroomsPoster.webp",
     backdropImage: "/mockImages/backroomsBackdrop.webp",
@@ -264,10 +268,11 @@ export const movies = [
     providers: [providerCatalog.prime, providerCatalog.apple],
   },
   {
-    id: "movie-5",
+    id: "movie-1",
     type: "movie",
     tag: "Movie",
     title: "Mortal Kombat 2",
+    trailerKey: "b24oG7qCwp4",
 
     posterImage: "/mockImages/mortalKombatPoster.webp",
     backdropImage: "/mockImages/mortalKombatBackdrop.webp",
@@ -291,10 +296,11 @@ export const movies = [
     providers: [providerCatalog.prime, providerCatalog.apple],
   },
   {
-    id: "movie-6",
+    id: "movie-2",
     type: "movie",
     tag: "Movie",
     title: "Superman",
+    trailerKey: "Ox8ZLF6cGM0",
 
     posterImage: "/mockImages/supermanPoster.webp",
     backdropImage: "/mockImages/supermanBackdrop.webp",
@@ -318,10 +324,11 @@ export const movies = [
     providers: [providerCatalog.prime, providerCatalog.apple],
   },
   {
-    id: "movie-7",
+    id: "movie-3",
     type: "movie",
     tag: "Movie",
     title: "Michael",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/michaelPoster.webp",
     backdropImage: "/mockImages/michaelBackdrop.webp",
@@ -345,10 +352,11 @@ export const movies = [
     providers: [providerCatalog.prime, providerCatalog.apple],
   },
   {
-    id: "movie-8",
+    id: "movie-4",
     type: "movie",
     tag: "Movie",
     title: "Backrooms",
+    trailerKey: "0HjdiohVOik",
 
     posterImage: "/mockImages/backroomsPoster.webp",
     backdropImage: "/mockImages/backroomsBackdrop.webp",
@@ -379,6 +387,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -406,6 +415,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -433,6 +443,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -460,6 +471,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -487,6 +499,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -514,6 +527,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -541,6 +555,7 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -568,6 +583,35 @@ export const shows = [
     type: "show",
     tag: "Series",
     title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
+
+    posterImage: "/mockImages/showPoster.jpg",
+    backdropImage: "/mockImages/showBackdrop.webp",
+
+    genres: ["Drama", "Mystery"],
+    genre: "Drama • Mystery",
+
+    date: "01/20/2026",
+    duration: "2 seasons",
+    durationLabel: "Seasons",
+
+    language: "English",
+    source: "TMDB",
+
+    description:
+      "Residents of an isolated town investigate a disappearance linked to their past.",
+
+    score: 8.6,
+    trendingRank: 3,
+
+    providers: [providerCatalog.netflix],
+  },
+  {
+    id: "show-1",
+    type: "show",
+    tag: "Series",
+    title: "The Long Dark",
+    trailerKey: "XNQbH1SDPRk",
 
     posterImage: "/mockImages/showPoster.jpg",
     backdropImage: "/mockImages/showBackdrop.webp",
@@ -599,6 +643,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -627,6 +672,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -655,6 +701,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -683,6 +730,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -711,6 +759,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -739,6 +788,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -767,6 +817,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -795,6 +846,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -823,6 +875,7 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -851,6 +904,36 @@ export const music = [
     tag: "Song",
     title: "Low Tide",
     artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
+
+    posterImage: "/mockImages/musicPoster.jpg",
+    backdropImage: "/mockImages/musicBackdrop.jpg",
+
+    genres: ["Indie Pop"],
+    genre: "Indie Pop",
+
+    date: "05/03/2026",
+    duration: "3:34",
+    durationLabel: "Duration",
+
+    language: "English",
+    source: "Spotify",
+
+    description:
+      "An atmospheric indie-pop track built around soft vocals and layered synths.",
+
+    score: 8.2,
+    trendingRank: 4,
+
+    providers: [providerCatalog.spotify],
+  },
+  {
+    id: "music-1",
+    type: "music",
+    tag: "Song",
+    title: "Low Tide",
+    artist: "Northern Signals",
+    trailerKey: "3zOLzsbOleM",
 
     posterImage: "/mockImages/musicPoster.jpg",
     backdropImage: "/mockImages/musicBackdrop.jpg",
@@ -881,6 +964,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -910,6 +994,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -939,6 +1024,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -968,6 +1054,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -997,6 +1084,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -1026,6 +1114,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -1055,6 +1144,7 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",
@@ -1084,6 +1174,67 @@ export const games = [
     type: "game",
     tag: "Game",
     title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
+
+    posterImage: "/mockImages/gamePoster.jpg",
+    backdropImage: "/mockImages/gameBackdrop.jpg",
+
+    genres: ["Action", "RPG"],
+    genre: "Action • RPG",
+
+    date: "03/12/2026",
+    duration: "42h average",
+    durationLabel: "Playtime",
+
+    language: "English",
+    source: "IGDB",
+
+    description:
+      "Explore a ruined kingdom and uncover the origin of a spreading corruption.",
+
+    platforms: ["PC", "PlayStation 5", "Xbox Series X"],
+
+    score: 9.1,
+    trendingRank: 5,
+
+    providers: [providerCatalog.steam],
+  },
+  {
+    id: "game-1",
+    type: "game",
+    tag: "Game",
+    title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
+
+    posterImage: "/mockImages/gamePoster.jpg",
+    backdropImage: "/mockImages/gameBackdrop.jpg",
+
+    genres: ["Action", "RPG"],
+    genre: "Action • RPG",
+
+    date: "03/12/2026",
+    duration: "42h average",
+    durationLabel: "Playtime",
+
+    language: "English",
+    source: "IGDB",
+
+    description:
+      "Explore a ruined kingdom and uncover the origin of a spreading corruption.",
+
+    platforms: ["PC", "PlayStation 5", "Xbox Series X"],
+
+    score: 9.1,
+    trendingRank: 5,
+
+    providers: [providerCatalog.steam],
+  },
+  {
+    id: "game-1",
+    type: "game",
+    tag: "Game",
+    title: "Ashen Reach",
+    trailerKey: "wsf78BS9VE0",
 
     posterImage: "/mockImages/gamePoster.jpg",
     backdropImage: "/mockImages/gameBackdrop.jpg",

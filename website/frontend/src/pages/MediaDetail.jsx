@@ -17,6 +17,7 @@ import {
 import Navbar from "../components/Navbar.jsx";
 import RatingModal from "../components/RatingModal.jsx";
 import { getMediaById } from "../data/mockData.js";
+import TrailerModal from "../components/TrailerModal.jsx";
 import "./MediaDetail.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -47,31 +48,28 @@ const heroCopy = {
   ],
 };
 
-function ratingKey(id) {
-  return `pv-rating-${id}`;
-}
-
 function MediaDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const item = useMemo(() => getMediaById(decodeURIComponent(id ?? "")), [id]);
 
   const [rating, setRating] = useState(0);
+  const [ratingNote, setRatingNote] = useState("");
+  const [ratingLoading, setRatingLoading] = useState(true);
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [ratingError, setRatingError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [inPlaylist, setInPlaylist] = useState(false);
   const [playlistLoading, setPlaylistLoading] = useState(true);
   const [playlistUpdating, setPlaylistUpdating] = useState(false);
   const [playlistMessage, setPlaylistMessage] = useState("");
   const [playlistError, setPlaylistError] = useState("");
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   useEffect(() => {
     if (!item) {
       return;
     }
-
-    const storedRating = window.localStorage.getItem(ratingKey(item.id));
-
-    setRating(storedRating ? Number(storedRating) : 0);
 
     async function loadPlaylistStatus() {
       try {
@@ -116,7 +114,46 @@ function MediaDetail() {
       }
     }
 
+    async function loadRating() {
+      try {
+        setRatingLoading(true);
+        setRatingError("");
+
+        const response = await fetch(
+          `${API_URL}/api/auth/ratings/${encodeURIComponent(
+            item.id,
+          )}?mediaType=${encodeURIComponent(item.type)}`,
+          {
+            method: "GET",
+            credentials: "include",
+          },
+        );
+
+        const data = await response.json();
+
+        if (response.status === 401) {
+          navigate("/login", {
+            replace: true,
+          });
+
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to load your rating.");
+        }
+
+        setRating(data.rating?.score || 0);
+        setRatingNote(data.rating?.note || "");
+      } catch (error) {
+        setRatingError(error.message);
+      } finally {
+        setRatingLoading(false);
+      }
+    }
+
     loadPlaylistStatus();
+    loadRating();
   }, [item, navigate]);
 
   if (!item) {
@@ -139,10 +176,49 @@ function MediaDetail() {
 
   const [tagline, subline] = heroCopy[item.type];
 
-  function handleSaveRating(value) {
-    setRating(value);
-    window.localStorage.setItem(ratingKey(item.id), String(value));
-    setModalOpen(false);
+  async function handleSaveRating({ score, note }) {
+    try {
+      setRatingSaving(true);
+      setRatingError("");
+
+      const response = await fetch(
+        `${API_URL}/api/auth/ratings/${encodeURIComponent(item.id)}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            mediaType: item.type,
+            score,
+            note,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.status === 401) {
+        navigate("/login", {
+          replace: true,
+        });
+
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to save your rating.");
+      }
+
+      setRating(data.rating.score);
+      setRatingNote(data.rating.note || "");
+      setModalOpen(false);
+    } catch (error) {
+      setRatingError(error.message);
+    } finally {
+      setRatingSaving(false);
+    }
   }
 
   async function addToPlaylist() {
@@ -297,8 +373,15 @@ function MediaDetail() {
                   </>
                 )}
               </button>
-              <button type="button" className="hero-view">
-                <Play size={16} /> Trailer
+              <button
+                type="button"
+                className="hero-view"
+                onClick={() => setTrailerOpen(true)}
+                disabled={!item.trailerKey}
+              >
+                <Play size={16} />
+
+                {item.trailerKey ? "Trailer" : "Trailer unavailable"}
               </button>
             </div>
           </div>
@@ -307,19 +390,29 @@ function MediaDetail() {
             <div className="detail-score">
               <div className="detail-score-head">
                 <span>Your Score</span>
+
                 <button
                   type="button"
                   className="score-edit"
                   onClick={() => setModalOpen(true)}
                   aria-label="Rate this title"
+                  disabled={ratingLoading}
                 >
                   <Pencil size={14} />
                 </button>
               </div>
+
               <div className="detail-score-value">
                 <Star size={18} fill={rating ? "currentColor" : "none"} />
-                {rating ? rating.toFixed(1) : "--"}/5
+
+                {ratingLoading ? "Loading..." : `${rating || "--"}/5`}
               </div>
+
+              {ratingNote && <p className="detail-score-note">{ratingNote}</p>}
+
+              {ratingError && (
+                <p className="detail-score-error">{ratingError}</p>
+              )}
             </div>
 
             <div className="detail-watch">
@@ -383,8 +476,24 @@ function MediaDetail() {
         <RatingModal
           title={item.title}
           initialRating={rating}
-          onCancel={() => setModalOpen(false)}
+          initialNote={ratingNote}
+          saving={ratingSaving}
+          serverError={ratingError}
+          onCancel={() => {
+            if (!ratingSaving) {
+              setModalOpen(false);
+              setRatingError("");
+            }
+          }}
           onSave={handleSaveRating}
+        />
+      )}
+
+      {trailerOpen && item.trailerKey && (
+        <TrailerModal
+          title={item.title}
+          videoKey={item.trailerKey}
+          onClose={() => setTrailerOpen(false)}
         />
       )}
     </div>

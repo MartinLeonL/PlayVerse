@@ -240,6 +240,21 @@
   gap: 16px;
 }
 
+.detail-score-note {
+  margin: 10px 0 0;
+  max-width: 220px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.detail-score-error {
+  margin: 10px 0 0;
+  color: #ff9b9b;
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
   .detail-card {
     flex-direction: column;
