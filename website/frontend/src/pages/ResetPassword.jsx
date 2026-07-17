@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Lock, Eye, EyeOff } from "lucide-react";
 
 import Logo from "../components/Logo.jsx";
-import "./Login.css";
+import "./ResetPassword.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 

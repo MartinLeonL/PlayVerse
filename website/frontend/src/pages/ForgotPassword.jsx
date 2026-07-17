@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 
 import Logo from "../components/Logo.jsx";
-import "./Login.css";
+import "./ForgotPassword.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 

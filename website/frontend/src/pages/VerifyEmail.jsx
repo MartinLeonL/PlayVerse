@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import "./VerifyEmail.css";
 
 function VerifyEmail() {
   const [searchParams] = useSearchParams();
