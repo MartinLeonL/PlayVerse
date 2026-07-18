@@ -26,35 +26,55 @@ class _AiSearchPageState extends State<AiSearchPage> {
   }
 
   Future<void> _askAi() async {
-    final prompt = _controller.text.trim();
-    if (prompt.isEmpty) return;
+  final prompt = _controller.text.trim();
+  if (prompt.isEmpty) return;
 
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _isLoading = true;
-      _hasSearched = true;
-    });
+  FocusScope.of(context).unfocus();
+  setState(() {
+    _isLoading = true;
+    _hasSearched = true;
+  });
 
-    // add api here
+  try {
+    final response = await Dio().post(
+      //Add domain here
+      //'http:// /api/recommendations/chat',
+      data: {
+        'message': prompt,
+        'userId': 'guest', // replace with actual userId when auth is wired up
+      },
+    );
 
-    // Placeholder logic until the AI backend above is wired up: just
-    // match the prompt against what's already loaded in the catalog.
-    final q = prompt.toLowerCase();
-    final matches = MediaCatalog.all.where((item) {
-      return item.title.toLowerCase().contains(q) ||
-          item.description.toLowerCase().contains(q) ||
-          item.genres.any((genre) => genre.toLowerCase().contains(q));
+    final data = response.data;
+    final String aiMessage = data['message'] ?? '';
+    final List rawRecs = data['recommendations'] ?? [];
+
+    final List<MediaItem> items = rawRecs.map((rec) {
+      return MediaItem(
+        id: rec['tmdbId']?.toString() ?? rec['title'],
+        title: rec['title'] ?? '',
+        description: rec['overview'] ?? rec['reason'] ?? '',
+        imageUrl: rec['poster'] ?? '',
+        genres: [rec['type'] ?? ''],
+        mediaType: rec['type'] ?? 'movie',
+        rating: (rec['rating'] as num?)?.toDouble() ?? 0.0,
+      );
     }).toList();
 
     if (!mounted) return;
     setState(() {
-      _recommendations = matches;
-      _summary = matches.isEmpty
-          ? "I couldn't find anything matching that yet — try describing a genre, mood, or title."
-          : 'Here\'s what I found based on "$prompt":';
+      _recommendations = items;
+      _summary = aiMessage.isNotEmpty ? aiMessage : 'Here\'s what I found for "$prompt":';
+      _isLoading = false;
+    });
+  } catch (e) {
+    if (!mounted) return;
+    setState(() {
+      _summary = 'Something went wrong. Please try again.';
       _isLoading = false;
     });
   }
+}
 
   @override
   Widget build(BuildContext context) {
