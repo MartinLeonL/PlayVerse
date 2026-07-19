@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
+import '../services/media_service.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell.dart';
@@ -19,10 +21,17 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
   String _userNote = '';
   bool _loadingEntry = true;
 
+
+  late String _runtime = widget.item.runtime;
+  late String _language = widget.item.language;
+  late List<String> _platforms = widget.item.platforms;
+  late String _releaseDate = widget.item.releaseDate;
+
   @override
   void initState() {
     super.initState();
     _loadExistingEntry();
+    _loadMediaDetails();
   }
 
   Future<void> _loadExistingEntry() async {
@@ -45,6 +54,68 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
       // fails, just fall back to the blank/default state silently
     } finally {
       if (mounted) setState(() => _loadingEntry = false);
+    }
+  }
+
+  Future<void> _loadMediaDetails() async {
+    final details = await MediaService().getMediaDetails(
+      mediaType: widget.item.mediaType,
+      mediaId: widget.item.mediaId,
+    );
+    if (details != null && mounted) {
+      setState(() {
+        _runtime = details['runtime'] ?? _runtime;
+        _language = details['language'] ?? _language;
+        _platforms = List<String>.from(details['platforms'] ?? _platforms);
+        _releaseDate = (details['releaseDate'] as String?)?.isNotEmpty == true ? details['releaseDate'] : _releaseDate;
+      });
+    }
+  }
+
+  Future<void> _openTrailer(BuildContext context) async {
+    // Music doesn't need a trailer search
+    if (widget.item.mediaType == 'music') {
+      final trackId = widget.item.mediaId.replaceFirst('deezer-', '');
+      final url = Uri.parse('https://www.deezer.com/track/$trackId');
+      try {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open Deezer: $e')),
+          );
+        }
+      }
+      return;
+    }
+
+    final videoId = await ApiService().getTrailerVideoId(
+      title: widget.item.title,
+      mediaType: widget.item.mediaType,
+    );
+
+    if (videoId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No trailer found')),
+        );
+      }
+      return;
+    }
+
+    final url = Uri.parse('https://www.youtube.com/watch?v=$videoId');
+    try {
+      // Deliberately not calling canLaunchUrl first — on Android 11+ it
+      // can report false even when a browser IS available, unless the
+      // app declares a <queries> entry in AndroidManifest.xml for the
+      // https scheme. Attempting launchUrl directly avoids that.
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open trailer: $e')),
+        );
+      }
     }
   }
 
@@ -133,30 +204,12 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
                     leading: const Icon(Icons.playlist_play, color: AppColors.primary),
                     title: Text(playlistName),
                     onTap: () async {
-                      try {
-                        final userId = await ApiService().getCurrentUserId();
-                        if (userId != null) {
-                          await ApiService().addMedia(
-                            userId: userId,
-                            mediaId: widget.item.mediaId,
-                            title: widget.item.title,
-                            mediaType: widget.item.mediaType,
-                          );
-                          store.addItemToPlaylist(playlistName, widget.item);
-                        }
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Added "${widget.item.title}" to $playlistName')),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to add to playlist: $e')),
-                          );
-                        }
+                      final error = await PlaylistStore.instance.addItemToPlaylist(playlistName, widget.item);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error == null ? 'Added "${widget.item.title}" to $playlistName' : 'Failed to add: $error')),
+                        );
                       }
                     },
                   );
@@ -271,13 +324,9 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Trailer playback coming soon')),
-                        );
-                      },
+                      onPressed: () => _openTrailer(context),
                       icon: const Icon(Icons.play_arrow, color: Colors.white),
-                      label: const Text('Trailer', style: TextStyle(color: Colors.white)),
+                      label: Text(item.mediaType == 'music' ? 'Play' : 'Trailer', style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -321,25 +370,30 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text('Where to watch', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: item.platforms.isEmpty
-                  ? const Text(
-                      'Not currently available on any tracked platform.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                    )
-                  : Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: item.platforms.map((platform) => _platformChip(platform)).toList(),
-                    ),
-            ),
-            const SizedBox(height: 20),
+            if (item.mediaType != 'music') ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  item.mediaType == 'game' ? 'Where to play' : 'Where to watch',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _platforms.isEmpty
+                    ? const Text(
+                        'Not currently available on any tracked platform.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      )
+                    : Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: _platforms.map((platform) => _platformChip(platform)).toList(),
+                      ),
+              ),
+              const SizedBox(height: 20),
+            ],
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -371,22 +425,11 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _infoColumn('Avg Runtime', item.runtime),
-                  _infoColumn('Language', item.language),
-                  _infoColumn('Release', item.releaseDate),
+                  _infoColumn('Runtime', _runtime),
+                  if (item.mediaType != 'game' && item.mediaType != 'music')
+                    _infoColumn('Language', _language),
+                  _infoColumn('Release', _releaseDate),
                 ],
-              ),
-            ),
-            const Divider(height: 32),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text('Reviews', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: List.generate(3, (index) => _reviewCard()),
               ),
             ),
             const SizedBox(height: 24),
@@ -485,23 +528,6 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
         const SizedBox(height: 4),
         Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
       ],
-    );
-  }
-
-  Widget _reviewCard() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text('John Doe', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 4),
-          Text(
-            'This is a placeholder review. Real reviews will be pulled in once the backend is connected.',
-            style: TextStyle(fontSize: 14, height: 1.4),
-          ),
-        ],
-      ),
     );
   }
 }

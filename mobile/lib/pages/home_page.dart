@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/media_catalog.dart';
+import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/home_banner.dart';
@@ -22,7 +23,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadCatalog() async {
-    await MediaCatalog.loadAll();
+
+    await Future.wait([
+      MediaCatalog.loadAll(),
+      PlaylistStore.instance.loadPlaylists(),
+    ]);
     if (mounted) setState(() => _isLoading = false);
   }
 

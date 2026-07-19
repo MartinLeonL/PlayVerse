@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:playverseapp/services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_background.dart';
 import '../widgets/top_nav_bar.dart';
@@ -8,7 +7,6 @@ import '../widgets/auth_tabs.dart';
 import '../widgets/bottom_info_bar.dart';
 import '../widgets/login_form.dart';
 import '../widgets/register_form.dart';
-import 'home_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -60,22 +58,6 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: TextButton(
-                      onPressed: () async {
-                        await ApiService().logout();   // ← clears any old token
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const HomePage()),
-                        );
-                      },
-                      child: const Text(
-                        'Continue as Guest',
-                        style: TextStyle(color: Colors.grey, decoration: TextDecoration.underline),
                       ),
                     ),
                   ),
