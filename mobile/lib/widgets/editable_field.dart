@@ -5,23 +5,11 @@ class EditableField extends StatefulWidget {
   final String initialValue;
   final bool obscureText;
 
-  /// Called when the user confirms an edit. Throw inside this (or let
-  /// the underlying Future throw) to show a failure snackbar instead
-  /// of a success one.
-  ///
-  /// For a normal field: onSave(newValue) { ... }
-  /// For the password field: onSave receives the NEW password; if
-  /// [requireCurrentPassword] is true, the current password the user
-  /// typed is passed as [currentPassword] to the same callback.
+
   final Future<void> Function(String newValue, {String? currentPassword}) onSave;
 
-  /// When true, shows an extra "Current password" field above the new
-  /// value field while editing, and passes it to onSave. Use this for
-  /// the Password row only.
   final bool requireCurrentPassword;
 
-  /// Number of dots to show when obscureText is true and not editing.
-  /// Falls back to 12 if not provided.
   final int? dotCount;
 
   const EditableField({
