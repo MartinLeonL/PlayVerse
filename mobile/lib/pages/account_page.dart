@@ -20,7 +20,6 @@ class _AccountPageState extends State<AccountPage> {
 
   String _firstName = 'Loading...';
   String _lastName = 'Loading...';
-  String _username = 'Loading...';
   String _email = 'Loading...';
   int _passwordLength = 8;
 
@@ -34,7 +33,6 @@ class _AccountPageState extends State<AccountPage> {
     final storage = const FlutterSecureStorage();
     final first = await storage.read(key: 'firstName') ?? 'John';
     final last = await storage.read(key: 'lastName') ?? 'Doe';
-    final login = await storage.read(key: 'login') ?? 'test';
     final email = await storage.read(key: 'email') ?? 'johndoe@gmail.com';
     final passwordLengthStr = await storage.read(key: 'password_length');
     final passwordLength = int.tryParse(passwordLengthStr ?? '') ?? 8;
@@ -43,7 +41,6 @@ class _AccountPageState extends State<AccountPage> {
       setState(() {
         _firstName = first;
         _lastName = last;
-        _username = login;
         _email = email;
         _passwordLength = passwordLength;
       });
@@ -135,20 +132,18 @@ class _AccountPageState extends State<AccountPage> {
                         },
                       ),
                       EditableField(
-                        key: ValueKey('username_$_username'),
-                        label: 'Username',
-                        initialValue: _username,
-                        onSave: (newValue, {currentPassword}) async {
-                          await ApiService().updateProfile(login: newValue);
-                          if (mounted) setState(() => _username = newValue);
-                        },
-                      ),
-                      EditableField(
                         key: ValueKey('email_$_email'),
                         label: 'Email',
                         initialValue: _email,
                         onSave: (newValue, {currentPassword}) async {
-                          await ApiService().updateProfile(email: newValue);
+                          if (!newValue.contains('@')) {
+                            throw Exception('Please enter a valid email address');
+                          }
+                          // Email doubles as the login credential now — no
+                          // separate username exists, so keep the backend's
+                          // Login field in sync with whatever the email
+                          // changes to, rather than letting them drift apart.
+                          await ApiService().updateProfile(email: newValue, login: newValue);
                           if (mounted) setState(() => _email = newValue);
                         },
                       ),
@@ -159,6 +154,9 @@ class _AccountPageState extends State<AccountPage> {
                         requireCurrentPassword: true,
                         dotCount: _passwordLength,
                         onSave: (newValue, {currentPassword}) async {
+                          if (newValue.length < 8) {
+                            throw Exception('Password must be at least 8 characters');
+                          }
                           await ApiService().updatePassword(
                             currentPassword: currentPassword ?? '',
                             newPassword: newValue,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/media_catalog.dart';
+import '../services/media_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/media_row.dart';
@@ -26,58 +26,44 @@ class _AiSearchPageState extends State<AiSearchPage> {
   }
 
   Future<void> _askAi() async {
-  final prompt = _controller.text.trim();
-  if (prompt.isEmpty) return;
+    final prompt = _controller.text.trim();
+    if (prompt.isEmpty) return;
 
-  FocusScope.of(context).unfocus();
-  setState(() {
-    _isLoading = true;
-    _hasSearched = true;
-  });
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+    });
 
-  try {
-    final response = await Dio().post(
-      //Add domain here
-      //'http:// /api/recommendations/chat',
-      data: {
-        'message': prompt,
-        'userId': 'guest', // replace with actual userId when auth is wired up
-      },
-    );
-
-    final data = response.data;
-    final String aiMessage = data['message'] ?? '';
-    final List rawRecs = data['recommendations'] ?? [];
-
-    final List<MediaItem> items = rawRecs.map((rec) {
-      return MediaItem(
-        id: rec['tmdbId']?.toString() ?? rec['title'],
-        title: rec['title'] ?? '',
-        description: rec['overview'] ?? rec['reason'] ?? '',
-        imageUrl: rec['poster'] ?? '',
-        genres: [rec['type'] ?? ''],
-        mediaType: rec['type'] ?? 'movie',
-        rating: (rec['rating'] as num?)?.toDouble() ?? 0.0,
-      );
-    }).toList();
+    final result = await MediaService().getAiRecommendations(prompt);
 
     if (!mounted) return;
+
+    if (result['error'] != null) {
+      setState(() {
+        _summary = 'Something went wrong. Please try again.';
+        _recommendations = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final String aiMessage = result['message'] as String;
+    final List<MediaItem> items = result['recommendations'] as List<MediaItem>;
+
     setState(() {
       _recommendations = items;
       _summary = aiMessage.isNotEmpty ? aiMessage : 'Here\'s what I found for "$prompt":';
       _isLoading = false;
     });
-  } catch (e) {
-    if (!mounted) return;
-    setState(() {
-      _summary = 'Something went wrong. Please try again.';
-      _isLoading = false;
-    });
   }
-}
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = (screenWidth - 60) / 2;
+    final cardHeight = cardWidth * 1.5;
+
     return AppShell(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -129,7 +115,17 @@ class _AiSearchPageState extends State<AiSearchPage> {
               Text(_summary, style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 16),
               if (_recommendations.isNotEmpty)
-                MediaRow(categoryTitle: 'Suggestions', items: _recommendations, loop: false),
+                Wrap(
+                  spacing: 20,
+                  runSpacing: 20,
+                  children: _recommendations.map((item) {
+                    return MediaCard(
+                      item: item,
+                      width: cardWidth,
+                      height: cardHeight,
+                    );
+                  }).toList(),
+                ),
             ],
           ],
         ),
