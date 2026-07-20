@@ -12,10 +12,12 @@ import {
   Globe,
   Database,
   CalendarDays,
+  ListPlus,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import RatingModal from "../components/RatingModal.jsx";
 import TrailerModal from "../components/TrailerModal.jsx";
+import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
 import { fetchMediaItem, parseMediaId } from "../utils/api.js";
 import "./MediaDetail.css";
 
@@ -96,12 +98,8 @@ function MediaDetail() {
   const [ratingSaving, setRatingSaving] = useState(false);
   const [ratingError, setRatingError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [inPlaylist, setInPlaylist] = useState(false);
-  const [playlistLoading, setPlaylistLoading] = useState(true);
-  const [playlistUpdating, setPlaylistUpdating] = useState(false);
-  const [playlistMessage, setPlaylistMessage] = useState("");
-  const [playlistError, setPlaylistError] = useState("");
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const trailerVideoKey = getYouTubeVideoKey(item);
 
   const musicPreviewUrl = item?.type === "music" ? item.previewUrl || "" : "";
@@ -138,48 +136,6 @@ function MediaDetail() {
 
   useEffect(() => {
     if (!item) return;
-
-    async function loadPlaylistStatus() {
-      try {
-        setPlaylistLoading(true);
-        setPlaylistError("");
-
-        const response = await fetch(`${API_URL}/api/auth/playlists`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        const data = await response.json();
-
-        if (response.status === 401) {
-          navigate("/login", {
-            replace: true,
-          });
-
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to load your playlist.");
-        }
-
-        const playlistKeyByType = {
-          movie: "movies",
-          show: "tvSeries",
-          music: "music",
-          game: "games",
-        };
-
-        const playlistKey = playlistKeyByType[item.type];
-        const savedIds = (data.playlists?.[playlistKey] || []).map(String);
-
-        setInPlaylist(savedIds.includes(String(item.id)));
-      } catch (error) {
-        setPlaylistError(error.message);
-      } finally {
-        setPlaylistLoading(false);
-      }
-    }
 
     async function loadRating() {
       try {
@@ -219,7 +175,6 @@ function MediaDetail() {
       }
     }
 
-    loadPlaylistStatus();
     loadRating();
   }, [item, navigate]);
 
@@ -301,100 +256,6 @@ function MediaDetail() {
     }
   }
 
-  async function addToPlaylist() {
-    try {
-      setPlaylistUpdating(true);
-      setPlaylistMessage("");
-      setPlaylistError("");
-
-      const response = await fetch(`${API_URL}/api/auth/playlists/items`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          mediaId: String(item.id),
-          mediaType: item.type,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.status === 401) {
-        navigate("/login", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to add this item to your playlist.",
-        );
-      }
-
-      setInPlaylist(true);
-      setPlaylistMessage(data.message);
-    } catch (error) {
-      setPlaylistError(error.message);
-    } finally {
-      setPlaylistUpdating(false);
-    }
-  }
-
-  async function removeFromPlaylist() {
-    try {
-      setPlaylistUpdating(true);
-      setPlaylistMessage("");
-      setPlaylistError("");
-
-      const response = await fetch(`${API_URL}/api/auth/playlists/items`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          mediaId: String(item.id),
-          mediaType: item.type,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.status === 401) {
-        navigate("/login", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to remove this item from your playlist.",
-        );
-      }
-
-      setInPlaylist(false);
-      setPlaylistMessage(data.message);
-    } catch (error) {
-      setPlaylistError(error.message);
-    } finally {
-      setPlaylistUpdating(false);
-    }
-  }
-
-  function handlePlaylistClick() {
-    if (inPlaylist) {
-      removeFromPlaylist();
-    } else {
-      addToPlaylist();
-    }
-  }
-
   return (
     <div className="home-page">
       <Navbar activeNav={navKeyByType[item.type]} />
@@ -426,30 +287,13 @@ function MediaDetail() {
             <div className="detail-actions">
               <button
                 type="button"
-                className="hero-playlist"
-                onClick={handlePlaylistClick}
-                disabled={playlistLoading || playlistUpdating}
+                className="hero-view"
+                onClick={() => setPickerOpen(true)}
               >
-                {playlistLoading ? (
-                  "Loading..."
-                ) : playlistUpdating ? (
-                  inPlaylist ? (
-                    "Removing..."
-                  ) : (
-                    "Adding..."
-                  )
-                ) : inPlaylist ? (
-                  <>
-                    <Check size={16} />
-                    Remove
-                  </>
-                ) : (
-                  <>
-                    <Plus size={16} />
-                    Playlist
-                  </>
-                )}
+                <ListPlus size={16} />
+                Add to Playlist
               </button>
+
               {item.type === "music" ? (
                 canPlayCurrentMedia ? (
                   <button
@@ -620,6 +464,10 @@ function MediaDetail() {
           audioUrl={musicPreviewUrl}
           onClose={() => setTrailerOpen(false)}
         />
+      )}
+
+      {pickerOpen && (
+        <PlaylistPickerModal item={item} onClose={() => setPickerOpen(false)} />
       )}
     </div>
   );

@@ -78,6 +78,10 @@ function requireAuth(req, res, next) {
   }
 }
 
+function generatePlaylistId() {
+  return crypto.randomBytes(12).toString("hex");
+}
+
 // Register with email and password
 
 router.post("/register", async (req, res, next) => {
@@ -134,6 +138,8 @@ router.post("/register", async (req, res, next) => {
         music: [],
         games: [],
       },
+
+      customPlaylists: [],
 
       ratings: [],
 
@@ -360,6 +366,8 @@ router.post("/google", async (req, res, next) => {
             music: [],
             games: [],
           },
+
+          customPlaylists: [],
 
           ratings: [],
 
@@ -923,7 +931,6 @@ router.delete("/playlists/items", requireAuth, async (req, res, next) => {
   }
 });
 
-
 const validRatingTypes = new Set([
   "movie",
   "show",
@@ -931,6 +938,269 @@ const validRatingTypes = new Set([
   "game",
 ]);
 
+// ---------------------------------------------------------------------
+// Custom (named) playlists — each one can mix movies, shows, music, and
+// games together, unlike the single category-based playlist above.
+// ---------------------------------------------------------------------
+
+// GET all of the user's custom playlists
+router.get("/custom-playlists", requireAuth, async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.userId)) {
+      return res.status(401).json({ message: "Invalid login session." });
+    }
+
+    const user = await getUsersCollection().findOne(
+      { _id: new ObjectId(req.userId) },
+      { projection: { customPlaylists: 1 } },
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "Account not found." });
+    }
+
+    const playlists = (user.customPlaylists || []).map((playlist) => ({
+      id: playlist.id,
+      name: playlist.name,
+      items: playlist.items || [],
+      createdAt: playlist.createdAt,
+      updatedAt: playlist.updatedAt,
+    }));
+
+    return res.json({ playlists });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST create a new named playlist
+router.post("/custom-playlists", requireAuth, async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.userId)) {
+      return res.status(401).json({ message: "Invalid login session." });
+    }
+
+    const name = String(req.body.name || "").trim();
+
+    if (!name) {
+      return res.status(400).json({ message: "Playlist name is required." });
+    }
+
+    if (name.length > 60) {
+      return res.status(400).json({ message: "Playlist name is too long." });
+    }
+
+    const now = new Date();
+
+    const newPlaylist = {
+      id: generatePlaylistId(),
+      name,
+      items: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const result = await getUsersCollection().updateOne(
+      { _id: new ObjectId(req.userId) },
+      { $push: { customPlaylists: newPlaylist } },
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Account not found." });
+    }
+
+    return res.status(201).json({
+      message: "Playlist created.",
+      playlist: {
+        id: newPlaylist.id,
+        name: newPlaylist.name,
+        items: [],
+        createdAt: newPlaylist.createdAt,
+        updatedAt: newPlaylist.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH rename a custom playlist
+router.patch(
+  "/custom-playlists/:playlistId",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!ObjectId.isValid(req.userId)) {
+        return res.status(401).json({ message: "Invalid login session." });
+      }
+
+      const { playlistId } = req.params;
+      const name = String(req.body.name || "").trim();
+
+      if (!name) {
+        return res.status(400).json({ message: "Playlist name is required." });
+      }
+
+      if (name.length > 60) {
+        return res.status(400).json({ message: "Playlist name is too long." });
+      }
+
+      const result = await getUsersCollection().updateOne(
+        { _id: new ObjectId(req.userId), "customPlaylists.id": playlistId },
+        {
+          $set: {
+            "customPlaylists.$.name": name,
+            "customPlaylists.$.updatedAt": new Date(),
+          },
+        },
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "Playlist not found." });
+      }
+
+      return res.json({ message: "Playlist renamed.", name });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// DELETE a custom playlist
+router.delete(
+  "/custom-playlists/:playlistId",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!ObjectId.isValid(req.userId)) {
+        return res.status(401).json({ message: "Invalid login session." });
+      }
+
+      const { playlistId } = req.params;
+
+      const result = await getUsersCollection().updateOne(
+        { _id: new ObjectId(req.userId) },
+        { $pull: { customPlaylists: { id: playlistId } } },
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "Account not found." });
+      }
+
+      return res.json({ message: "Playlist deleted." });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// POST add an item (any media type — movie, show, music, or game) to a playlist
+router.post(
+  "/custom-playlists/:playlistId/items",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!ObjectId.isValid(req.userId)) {
+        return res.status(401).json({ message: "Invalid login session." });
+      }
+
+      const { playlistId } = req.params;
+      const mediaId = String(req.body.mediaId || "").trim();
+      const mediaType = String(req.body.mediaType || "").trim();
+
+      if (!mediaId || !validRatingTypes.has(mediaType)) {
+        return res
+          .status(400)
+          .json({ message: "A valid media ID and media type are required." });
+      }
+
+      const users = getUsersCollection();
+      const userId = new ObjectId(req.userId);
+
+      // Only push if this exact item isn't already in the playlist.
+      const result = await users.updateOne(
+        {
+          _id: userId,
+          customPlaylists: {
+            $elemMatch: {
+              id: playlistId,
+              items: { $not: { $elemMatch: { mediaId, mediaType } } },
+            },
+          },
+        },
+        {
+          $push: {
+            "customPlaylists.$.items": {
+              mediaId,
+              mediaType,
+              addedAt: new Date(),
+            },
+          },
+          $set: { "customPlaylists.$.updatedAt": new Date() },
+        },
+      );
+
+      if (result.matchedCount === 0) {
+        const playlistExists = await users.findOne({
+          _id: userId,
+          "customPlaylists.id": playlistId,
+        });
+
+        if (!playlistExists) {
+          return res.status(404).json({ message: "Playlist not found." });
+        }
+
+        return res.json({
+          message: "This item is already in the playlist.",
+          added: false,
+        });
+      }
+
+      return res.json({ message: "Added to playlist.", added: true });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// DELETE remove an item from a playlist
+router.delete(
+  "/custom-playlists/:playlistId/items",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!ObjectId.isValid(req.userId)) {
+        return res.status(401).json({ message: "Invalid login session." });
+      }
+
+      const { playlistId } = req.params;
+      const mediaId = String(req.body.mediaId || "").trim();
+      const mediaType = String(req.body.mediaType || "").trim();
+
+      if (!mediaId || !mediaType) {
+        return res
+          .status(400)
+          .json({ message: "Media ID and media type are required." });
+      }
+
+      const result = await getUsersCollection().updateOne(
+        { _id: new ObjectId(req.userId), "customPlaylists.id": playlistId },
+        {
+          $pull: { "customPlaylists.$.items": { mediaId, mediaType } },
+          $set: { "customPlaylists.$.updatedAt": new Date() },
+        },
+      );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "Playlist not found." });
+      }
+
+      return res.json({ message: "Removed from playlist.", removed: true });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get("/ratings/:mediaId", requireAuth, async (req, res, next) => {
   try {
