@@ -9,6 +9,15 @@ class NavDropdown extends StatelessWidget {
 
   const NavDropdown({super.key, required this.visible, required this.onClose});
 
+  // Maps each nav label to the internal mediaType string the backend
+  // and AllMediaPage expect.
+  static const Map<String, String> _labelToMediaType = {
+    'Movies': 'movie',
+    'Shows': 'show',
+    'Games': 'game',
+    'Music': 'music',
+  };
+
   @override
   Widget build(BuildContext context) {
     final items = [
@@ -47,6 +56,7 @@ class NavDropdown extends StatelessWidget {
                                 builder: (context) => AllMediaPage(
                                   title: label,
                                   items: MediaCatalog.categories[label] ?? [],
+                                  mediaType: _labelToMediaType[label],
                                 ),
                               ),
                             );

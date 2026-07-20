@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
+import '../data/media_catalog.dart';
 import '../pages/media_detail_page.dart';
-import '../services/api_service.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
 import 'media_row.dart';
-
-class BannerItem {
-  final String title;
-  final String imageUrl;
-  final String tag;
-
-  BannerItem({required this.title, required this.imageUrl, required this.tag});
-}
 
 class HomeBanner extends StatefulWidget {
   const HomeBanner({super.key});
@@ -24,11 +16,12 @@ class _HomeBannerState extends State<HomeBanner> {
   final PageController _pageController = PageController(viewportFraction: 1);
   int _currentPage = 0;
 
-  final List<BannerItem> _banners = [
-    BannerItem(title: 'Superman', tag: 'Movie', imageUrl: 'https://image.tmdb.org/t/p/w780/8VG8fDNiy50H4FedGwdSVUPoaJe.jpg'),
-    BannerItem(title: 'The Last Airbender', tag: 'Show', imageUrl: 'https://image.tmdb.org/t/p/w780/qYTsRQNu1MdxTQ0BE0F7YOAOROq.jpg'),
-    BannerItem(title: 'The Boys', tag: 'Show', imageUrl: 'https://image.tmdb.org/t/p/w780/2zmTngn1tYC1AvfnrFLhxeD82hz.jpg'),
-  ];
+  // Pulled from real trending data instead of a hardcoded list —
+  // a mix of movies and shows so the banner isn't all one type.
+  List<MediaItem> get _banners => [
+        ...MediaCatalog.movies.take(2),
+        ...MediaCatalog.shows.take(2),
+      ];
 
   @override
   void dispose() {
@@ -38,6 +31,9 @@ class _HomeBannerState extends State<HomeBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final banners = _banners;
+    if (banners.isEmpty) return const SizedBox.shrink();
+
     final bannerHeight = MediaQuery.of(context).size.height * 0.4;
 
     return Column(
@@ -46,11 +42,11 @@ class _HomeBannerState extends State<HomeBanner> {
           height: bannerHeight,
           child: PageView.builder(
             controller: _pageController,
-            itemCount: _banners.length,
+            itemCount: banners.length,
             onPageChanged: (index) => setState(() => _currentPage = index),
             itemBuilder: (context, index) {
-              final banner = _banners[index];
-              final mediaItem = MediaItem(title: banner.title, imageUrl: banner.imageUrl);
+              final item = banners[index];
+              final tagLabel = item.mediaType == 'show' ? 'Show' : 'Movie';
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ClipRRect(
@@ -59,7 +55,7 @@ class _HomeBannerState extends State<HomeBanner> {
                     children: [
                       Positioned.fill(
                         child: Image.network(
-                          banner.imageUrl,
+                          item.bannerUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800]),
                         ),
@@ -82,7 +78,7 @@ class _HomeBannerState extends State<HomeBanner> {
                           children: [
                             _tag('★ Trending'),
                             const SizedBox(width: 8),
-                            _tag(banner.tag),
+                            _tag(tagLabel),
                           ],
                         ),
                       ),
@@ -90,7 +86,7 @@ class _HomeBannerState extends State<HomeBanner> {
                         left: 16,
                         bottom: 60,
                         child: Text(
-                          banner.title,
+                          item.title,
                           style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -103,14 +99,14 @@ class _HomeBannerState extends State<HomeBanner> {
                               onTap: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => MediaDetailPage(item: mediaItem)),
+                                  MaterialPageRoute(builder: (_) => MediaDetailPage(item: item)),
                                 );
                               },
                               child: _pillButton('View', Icons.chevron_right),
                             ),
                             const SizedBox(width: 8),
                             GestureDetector(
-                              onTap: () => _showPlaylistPicker(context, mediaItem),
+                              onTap: () => _showPlaylistPicker(context, item),
                               child: _pillButton('Playlist', Icons.add),
                             ),
                           ],
@@ -126,7 +122,7 @@ class _HomeBannerState extends State<HomeBanner> {
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_banners.length, (index) {
+          children: List.generate(banners.length, (index) {
             final isActive = index == _currentPage;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 250),
@@ -150,8 +146,10 @@ class _HomeBannerState extends State<HomeBanner> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.only(
@@ -159,39 +157,41 @@ class _HomeBannerState extends State<HomeBanner> {
               topRight: Radius.circular(24),
             ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
           child: SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: Text('Add to Playlist', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 const Divider(height: 1),
-                ...store.playlists.keys.map((playlistName) {
-                  return ListTile(
-                    leading: const Icon(Icons.playlist_play, color: AppColors.primary),
-                    title: Text(playlistName),
-                    onTap: () async {
-                      final userId = await ApiService().getCurrentUserId();
-                      if (userId != null) {
-                        await ApiService().addMedia(
-                          userId: userId,
-                          mediaId: item.title,
-                          title: item.title,
-                          mediaType: 'movie',
-                        );
-                        store.addItemToPlaylist(playlistName, item);
-                      }
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added "${item.title}" to $playlistName')),
-                      );
-                    },
-                  );
-                }),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...store.playlists.keys.map((playlistName) {
+                          return ListTile(
+                            leading: const Icon(Icons.playlist_play, color: AppColors.primary),
+                            title: Text(playlistName),
+                            onTap: () async {
+                              final error = await PlaylistStore.instance.addItemToPlaylist(playlistName, item);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error == null ? 'Added "${item.title}" to $playlistName' : 'Failed to add: $error')),
+                                );
+                              }
+                            },
+                          );
+                        }),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
