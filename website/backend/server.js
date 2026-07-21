@@ -40,24 +40,24 @@ const allowedOrigins = new Set(
     .map(normalizeOrigin)
     .filter(Boolean),
 );
-
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin || allowedOrigins.has(normalizeOrigin(origin))) {
         return callback(null, true);
       }
-
       const error = new Error(`Origin not allowed by CORS: ${origin}`);
-
       error.statusCode = 403;
-
       return callback(error);
     },
-
     credentials: true,
-  }),
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  })
 );
+
+// Explicitly handle preflight OPTIONS requests for all routes
+app.options("*", cors());
 
 app.use(express.json());
 app.use(cookieParser());
