@@ -1,5 +1,5 @@
 [[redirects]]
   from = "/api/*"
-  to = "http://76.82.204.22:3001/api/:splat"
+  to = "https://playverse-api.onrender.com/api/:splat"
   status = 200
   force = true
