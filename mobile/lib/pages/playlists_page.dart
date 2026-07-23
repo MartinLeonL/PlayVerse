@@ -41,7 +41,34 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
     );
   }
 
-  void _confirmDeletePlaylist(BuildContext context, String name) {
+  void _renamePlaylist(BuildContext context, String playlistId, String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename Playlist'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Playlist name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              _store.renamePlaylist(playlistId, controller.text);
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeletePlaylist(BuildContext context, String playlistId, String name) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -54,7 +81,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
           ),
           TextButton(
             onPressed: () {
-              _store.deletePlaylist(name);
+              _store.deletePlaylist(playlistId);
               Navigator.pop(context);
             },
             child: const Text('Delete', style: TextStyle(color: AppColors.destructive)),
@@ -104,14 +131,32 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              ..._store.playlists.entries.map((entry) {
-                return MediaRow(
-                  categoryTitle: entry.key,
-                  items: entry.value,
-                  loop: false,
-                  titleOpensAll: true,
-                  isPlaylist: true,
-                  onDelete: () => _confirmDeletePlaylist(context, entry.key),
+              ..._store.playlists.map((playlist) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                          onPressed: () => _renamePlaylist(context, playlist.id, playlist.name),
+                          tooltip: 'Rename',
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
+                    MediaRow(
+                      categoryTitle: playlist.name,
+                      items: playlist.items,
+                      loop: false,
+                      titleOpensAll: true,
+                      isPlaylist: true,
+                      playlistId: playlist.id,
+                      onDelete: () => _confirmDeletePlaylist(context, playlist.id, playlist.name),
+                    ),
+                  ],
                 );
               }),
             ],

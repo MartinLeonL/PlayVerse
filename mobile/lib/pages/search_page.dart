@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../models/media_item.dart';
+import '../models/playlist.dart';
 import '../services/media_service.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
@@ -7,12 +9,15 @@ import '../widgets/media_row.dart';
 import 'all_media_page.dart';
 
 class SearchPage extends StatefulWidget {
-  // When set, this page is in "add to playlist" mode: search results are
-  // shown as a simple tappable list, and tapping one adds it directly to
-  // this playlist instead of opening its detail page.
+  // When both are set, this page is in "add to playlist" mode: search
+  // results are shown as a simple tappable list, and tapping one adds
+  // it directly to this playlist instead of opening its detail page.
+  // targetPlaylistId is what the API call actually needs; targetPlaylistName
+  // is just for display text.
+  final String? targetPlaylistId;
   final String? targetPlaylistName;
 
-  const SearchPage({super.key, this.targetPlaylistName});
+  const SearchPage({super.key, this.targetPlaylistId, this.targetPlaylistName});
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -25,7 +30,7 @@ class _SearchPageState extends State<SearchPage> {
   bool _isSearching = false;
   Timer? _debounce;
 
-  bool get _isAddMode => widget.targetPlaylistName != null;
+  bool get _isAddMode => widget.targetPlaylistId != null;
 
   @override
   void dispose() {
@@ -75,17 +80,18 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-  List<String> get _matchedPlaylists {
+  List<Playlist> get _matchedPlaylists {
     if (_query.isEmpty || _isAddMode) return [];
     final q = _query.toLowerCase();
-    return PlaylistStore.instance.playlists.keys
-        .where((name) => name.toLowerCase().contains(q))
+    return PlaylistStore.instance.playlists
+        .where((p) => p.name.toLowerCase().contains(q))
         .toList();
   }
 
   Future<void> _addToTargetPlaylist(MediaItem item) async {
-    final playlistName = widget.targetPlaylistName!;
-    final error = await PlaylistStore.instance.addItemToPlaylist(playlistName, item);
+    final playlistId = widget.targetPlaylistId!;
+    final playlistName = widget.targetPlaylistName ?? 'the playlist';
+    final error = await PlaylistStore.instance.addItemToPlaylist(playlistId, item);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -177,7 +183,7 @@ class _SearchPageState extends State<SearchPage> {
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: Image.network(
-                  item.imageUrl,
+                  item.posterImage,
                   width: 46,
                   height: 66,
                   fit: BoxFit.cover,
@@ -202,7 +208,7 @@ class _SearchPageState extends State<SearchPage> {
 
   // Normal mode: same as before — playlist name matches, plus each
   // category as its own horizontal MediaRow.
-  Widget _buildNormalResults(List<String> playlistMatches) {
+  Widget _buildNormalResults(List<Playlist> playlistMatches) {
     return ListView(
       padding: const EdgeInsets.only(top: 16, bottom: 24),
       children: [
@@ -215,18 +221,19 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ),
           const SizedBox(height: 4),
-          ...playlistMatches.map((name) {
+          ...playlistMatches.map((playlist) {
             return ListTile(
               leading: const Icon(Icons.playlist_play, color: AppColors.primary),
-              title: Text(name),
+              title: Text(playlist.name),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => AllMediaPage(
-                      title: name,
-                      items: PlaylistStore.instance.playlists[name] ?? [],
+                      title: playlist.name,
+                      items: playlist.items,
                       isPlaylist: true,
+                      playlistId: playlist.id,
                     ),
                   ),
                 );
