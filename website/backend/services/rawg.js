@@ -24,6 +24,24 @@ async function rawgFetch(path, params = {}) {
   return response.json();
 }
 
+// RAWG's description_raw often concatenates multiple language
+// translations back to back in the same field (English, then Spanish,
+// then sometimes more) with no reliable delimiter between them. This
+// drops any paragraph containing characters that essentially never show
+// up in English text (ñ, á, ¿, etc.) — a targeted fix for the reported
+// case, not a general-purpose language detector.
+const NON_ENGLISH_CHARS = /[ñÑáéíóúÁÉÍÓÚ¿¡]/;
+
+function englishOnlyDescription(rawText) {
+  if (!rawText) return null;
+
+  const paragraphs = rawText.split(/\n{2,}/);
+  const englishParagraphs = paragraphs.filter((p) => !NON_ENGLISH_CHARS.test(p));
+
+  const result = englishParagraphs.join("\n\n").trim();
+  return result || rawText.trim(); // if everything got filtered out, fall back to the original rather than showing nothing
+}
+
 function normalizeGame(game) {
   const genreNames = (game.genres || []).map((g) => g.name);
 
@@ -47,8 +65,10 @@ function normalizeGame(game) {
     language: "English",
     source: "RAWG",
     description:
-      game.description_raw || "No description available for this title.",
-    score: game.rating ? Number(game.rating.toFixed(1)) : null,
+      englishOnlyDescription(game.description_raw) || "No description available for this title.",
+    // Doubled to match TMDB's 0-10 scale — RAWG rates out of 5 natively,
+    // and every other media type in the app is out of 10.
+    score: game.rating ? Number((game.rating * 2).toFixed(1)) : null,
     platforms: (game.platforms || []).map((p) => p.platform.name),
     providers: hasSteam ? [badge("steam")] : [],
   };

@@ -68,8 +68,8 @@ async function getGenres() {
     .map((g) => ({ id: g.id, name: g.name }));
 }
 
-async function getChartTracks(limit = 30) {
-  const data = await deezerFetch("/chart/0/tracks", { limit });
+async function getChartTracks(limit = 30, index = 0) {
+  const data = await deezerFetch("/chart/0/tracks", { limit, index });
 
   return {
     items: data.data.map(normalizeTrack),
@@ -78,8 +78,8 @@ async function getChartTracks(limit = 30) {
   };
 }
 
-async function getTracksByGenre(genreId, limit = 30) {
-  const data = await deezerFetch(`/chart/${genreId}/tracks`, { limit });
+async function getTracksByGenre(genreId, limit = 30, index = 0) {
+  const data = await deezerFetch(`/chart/${genreId}/tracks`, { limit, index });
 
   return {
     items: data.data.map(normalizeTrack),
