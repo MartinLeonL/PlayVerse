@@ -1,58 +1,131 @@
 import 'package:dio/dio.dart';
-import '../widgets/media_row.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/media_item.dart';
+import '../models/chat_message.dart';
+import '../models/review.dart';
 
 class MediaService {
   static final MediaService instance = MediaService._internal();
   factory MediaService() => instance;
-  MediaService._internal();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://playverseapp.onrender.com',
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
-  ));
+  late final Dio _dio;
+  final _storage = const FlutterSecureStorage();
 
-  // Trending (home page rows) — capped, fast-loading lists
-  Future<List<MediaItem>> getMovies() => _fetchCategory('/getmovies');
-  Future<List<MediaItem>> getShows() => _fetchCategory('/getshows');
-  Future<List<MediaItem>> getGames() => _fetchCategory('/getgames');
-  Future<List<MediaItem>> getMusic() => _fetchCategory('/getmusic'); // not built yet — returns [] for now
+  MediaService._internal() {
+    _dio = Dio(BaseOptions(
+      // TODO: replace with the real deployed web backend URL, same as api_service.dart
+      baseUrl: 'http://10.0.2.2:5000/api',
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 20),
+    ));
 
-  // Full catalog browsing (paginated + sorted) — used by "All Movies/Shows/Games"
-  Future<List<MediaItem>> getAllMovies({int page = 1, String sort = 'trending'}) =>
-      _fetchCategory('/allmovies?page=$page&sort=$sort');
-  Future<List<MediaItem>> getAllShows({int page = 1, String sort = 'trending'}) =>
-      _fetchCategory('/allshows?page=$page&sort=$sort');
-  Future<List<MediaItem>> getAllGames({int page = 1, String sort = 'trending'}) =>
-      _fetchCategory('/allgames?page=$page&sort=$sort');
-  Future<List<MediaItem>> getAllMusic({int page = 1, String sort = 'trending'}) =>
-      _fetchCategory('/allmusic?page=$page&sort=$sort');
+    // Most media browsing is public and doesn't need this, but AI chat
+    // and anything ratings-related does — this was missing entirely
+    // before, which is why authenticated calls through this service
+    // (like AI chat) failed with "Authentication required."
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await _storage.read(key: 'auth_token');
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ));
+  }
 
-  Future<List<MediaItem>> getAllByType(String mediaType, {int page = 1, String sort = 'trending'}) {
+  // ---- Browsing: popular (default), genre-filtered, or sorted ----
+  // sort: omit for default popular order, or one of:
+  // 'az' | 'za' | 'recent' | 'highest' | 'lowest' | 'userScoreAsc' | 'userScoreDesc'
+  // NOTE: sort and genre don't combine on the backend — requesting a
+  // sort ignores any genre filter (matches the backend's own limitation).
+
+  Future<Map<String, dynamic>> _fetchCategory(
+    String path, {
+    int page = 1,
+    String? genre,
+    String? sort,
+  }) async {
+    try {
+      final res = await _dio.get(path, queryParameters: {
+        'page': page,
+        if (genre != null) 'genre': genre,
+        if (sort != null) 'sort': sort,
+      });
+      final data = res.data as Map<String, dynamic>;
+      final items = (data['items'] as List<dynamic>? ?? [])
+          .map((json) => MediaItem.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return {
+        'items': items,
+        'page': data['page'] ?? page,
+        'totalPages': data['totalPages'] ?? 1,
+      };
+    } catch (e) {
+      print('Failed to load $path: $e');
+      return {'items': <MediaItem>[], 'page': page, 'totalPages': 1};
+    }
+  }
+
+  Future<List<MediaItem>> getMovies({int page = 1, String? genre, String? sort}) async =>
+      (await _fetchCategory('/media/movies', page: page, genre: genre, sort: sort))['items'];
+  Future<List<MediaItem>> getShows({int page = 1, String? genre, String? sort}) async =>
+      (await _fetchCategory('/media/shows', page: page, genre: genre, sort: sort))['items'];
+  Future<List<MediaItem>> getGames({int page = 1, String? genre, String? sort}) async =>
+      (await _fetchCategory('/media/games', page: page, genre: genre, sort: sort))['items'];
+  Future<List<MediaItem>> getMusic({int page = 1, String? genre, String? sort}) async =>
+      (await _fetchCategory('/media/music', page: page, genre: genre, sort: sort))['items'];
+
+  Future<List<MediaItem>> getByType(String mediaType, {int page = 1, String? genre, String? sort}) {
     switch (mediaType) {
       case 'movie':
-        return getAllMovies(page: page, sort: sort);
+        return getMovies(page: page, genre: genre, sort: sort);
       case 'show':
-        return getAllShows(page: page, sort: sort);
+        return getShows(page: page, genre: genre, sort: sort);
       case 'game':
-        return getAllGames(page: page, sort: sort);
+        return getGames(page: page, genre: genre, sort: sort);
       case 'music':
-        return getAllMusic(page: page, sort: sort);
+        return getMusic(page: page, genre: genre, sort: sort);
       default:
         return Future.value([]);
     }
   }
 
-  // Search — hits TMDB/RAWG's actual search endpoints, not the trending
-  // or pool data, so it can find anything in the real catalog.
-  Future<List<MediaItem>> searchMovies(String query) =>
-      _fetchCategory('/searchmovies?query=${Uri.encodeQueryComponent(query)}');
-  Future<List<MediaItem>> searchShows(String query) =>
-      _fetchCategory('/searchshows?query=${Uri.encodeQueryComponent(query)}');
-  Future<List<MediaItem>> searchGames(String query) =>
-      _fetchCategory('/searchgames?query=${Uri.encodeQueryComponent(query)}');
-  Future<List<MediaItem>> searchMusic(String query) =>
-      _fetchCategory('/searchmusic?query=${Uri.encodeQueryComponent(query)}');
+  // ---- Genres ----
+
+  Future<List<Map<String, dynamic>>> getGenres(String type) async {
+    try {
+      final res = await _dio.get('/media/genres/$type');
+      return List<Map<String, dynamic>>.from(res.data['genres'] ?? []);
+    } catch (e) {
+      print('Failed to load genres for $type: $e');
+      return [];
+    }
+  }
+
+  // ---- Search ----
+
+  Future<List<MediaItem>> _search(String type, String query, {int page = 1}) async {
+    try {
+      final res = await _dio.get('/media/search', queryParameters: {
+        'type': type,
+        'query': query,
+        'page': page,
+      });
+      final data = res.data as Map<String, dynamic>;
+      return (data['items'] as List<dynamic>? ?? [])
+          .map((json) => MediaItem.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Search failed for $type "$query": $e');
+      return [];
+    }
+  }
+
+  Future<List<MediaItem>> searchMovies(String query, {int page = 1}) => _search('movies', query, page: page);
+  Future<List<MediaItem>> searchShows(String query, {int page = 1}) => _search('shows', query, page: page);
+  Future<List<MediaItem>> searchGames(String query, {int page = 1}) => _search('games', query, page: page);
+  Future<List<MediaItem>> searchMusic(String query, {int page = 1}) => _search('music', query, page: page);
 
   Future<List<MediaItem>> searchAll(String query) async {
     final results = await Future.wait([
@@ -64,122 +137,102 @@ class MediaService {
     return results.expand((list) => list).toList();
   }
 
-  // Fetches full details (poster, genres, description, rating) for a
-  // batch of saved items in one call. Used when loading playlists,
-  // since the DB only stores mediaId/title/mediaType — not the rest.
-  Future<List<MediaItem>> hydrateMedia(List<Map<String, String>> items) async {
-    if (items.isEmpty) return [];
+  // ---- Hero (homepage carousel) ----
+
+  Future<List<MediaItem>> getHero() async {
     try {
-      final res = await _dio.post('/hydratemedia', data: {'items': items});
-      final data = res.data;
-      if (data['error'] != null && data['error'] != '') {
-        print('Backend error on /hydratemedia: ${data['error']}');
-        return [];
-      }
-      final List<dynamic> results = data['results'] ?? [];
-      return results.map((json) => MediaItem(
-        mediaId: json['mediaId'] as String?,
-        mediaType: json['mediaType'] ?? 'movie',
-        title: json['title'] ?? 'Unknown',
-        imageUrl: json['imageUrl'] ?? '',
-        bannerUrl: json['bannerUrl'] as String?,
-        genres: List<String>.from(json['genres'] ?? []),
-        description: json['description'] ?? 'No description available yet.',
-        runtime: json['runtime'] ?? '--',
-        language: json['language'] ?? '--',
-        releaseDate: json['releaseDate'] ?? '--',
-        platforms: List<String>.from(json['platforms'] ?? []),
-        averageRating: (json['averageRating'] as num?)?.toDouble(),
-        ratingCount: json['ratingCount'] ?? 0,
-      )).toList();
+      final res = await _dio.get('/media/hero');
+      return (res.data['items'] as List<dynamic>? ?? [])
+          .map((json) => MediaItem.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
-      print('Failed to hydrate media: $e');
+      print('Failed to load hero items: $e');
       return [];
     }
   }
 
-  // AI-assisted recommendations — the backend grounds the AI's
-  // suggestions in real search results, so this parses the same way as
-  // any other catalog response.
-  Future<Map<String, dynamic>> getAiRecommendations(String message) async {
-    try {
-      final res = await _dio.post('/recommendations/chat', data: {'message': message});
-      final data = res.data;
-      if (data['error'] != null && data['error'] != '') {
-        print('Backend error on /recommendations/chat: ${data['error']}');
-        return {'message': '', 'recommendations': <MediaItem>[], 'error': data['error']};
-      }
-      final List<dynamic> rawRecs = data['recommendations'] ?? [];
-      final recommendations = rawRecs.map((json) => MediaItem(
-        mediaId: json['mediaId'] as String?,
-        mediaType: json['mediaType'] ?? 'movie',
-        title: json['title'] ?? 'Unknown',
-        imageUrl: json['imageUrl'] ?? '',
-        bannerUrl: json['bannerUrl'] as String?,
-        genres: List<String>.from(json['genres'] ?? []),
-        description: json['description'] ?? 'No description available yet.',
-        runtime: json['runtime'] ?? '--',
-        language: json['language'] ?? '--',
-        releaseDate: json['releaseDate'] ?? '--',
-        platforms: List<String>.from(json['platforms'] ?? []),
-        averageRating: (json['averageRating'] as num?)?.toDouble(),
-        ratingCount: json['ratingCount'] ?? 0,
-      )).toList();
-      return {'message': data['message'] ?? '', 'recommendations': recommendations, 'error': null};
-    } catch (e) {
-      print('Failed to get AI recommendations: $e');
-      return {'message': '', 'recommendations': <MediaItem>[], 'error': e.toString()};
-    }
-  }
+  // ---- Single item (detail page — includes trailerKey and full providers) ----
 
-  // Extra detail hydration (runtime, real language name, watch platforms)
-  // — fetched once when a detail page opens, not part of list/browse data.
-  Future<Map<String, dynamic>?> getMediaDetails({required String mediaType, required String mediaId}) async {
+  Future<MediaItem?> getMediaItem({required String type, required String id}) async {
     try {
-      final res = await _dio.get('/mediadetails', queryParameters: {'mediaType': mediaType, 'mediaId': mediaId});
-      final data = res.data;
-      if (data['error'] != null && data['error'] != '') {
-        print('Backend error on /mediadetails: ${data['error']}');
-        return null;
-      }
-      return data;
+      // Accepts either the bare source ID or the full prefixed one
+      // ("1368337" or "movie-1368337") — the backend's item endpoint
+      // only wants the bare ID, so strip a recognized prefix if present.
+      final sourceId = MediaItem.typeFromId(id) != null ? id.split('-').skip(1).join('-') : id;
+
+      final res = await _dio.get('/media/item/$type/$sourceId');
+      final item = res.data['item'];
+      return item != null ? MediaItem.fromJson(item as Map<String, dynamic>) : null;
     } catch (e) {
-      print('Failed to load media details: $e');
+      print('Failed to load item $type/$id: $e');
       return null;
     }
   }
 
-  // Private helper
-  Future<List<MediaItem>> _fetchCategory(String endpoint) async {
+  /// Hydrates a batch of saved playlist entries (just {mediaId,
+  /// mediaType} pairs) into full MediaItems. There's no batch endpoint
+  /// on the backend — each one is a separate /media/item/:type/:id
+  /// call, run concurrently.
+  Future<List<MediaItem>> hydrateItems(List<Map<String, String>> refs) async {
+    final results = await Future.wait(refs.map((ref) {
+      final type = ref['mediaType'];
+      final id = ref['mediaId'];
+      if (type == null || id == null) return Future.value(null);
+      return getMediaItem(type: type, id: id);
+    }));
+    return results.whereType<MediaItem>().toList();
+  }
+
+  // ---- Public reviews ----
+  // mediaId here is the FULL prefixed id (e.g. "movie-27205"), matching
+  // how ratings are actually stored — different from getMediaItem/
+  // hydrateItems, which want the bare source id.
+
+  Future<List<Review>> getReviews({required String mediaId, required String mediaType}) async {
     try {
-      final res = await _dio.get(endpoint);
-      final data = res.data;
-
-      if (data['error'] != null && data['error'] != '') {
-        print('Backend error on $endpoint: ${data['error']}');
-        return [];
-      }
-
-      final List<dynamic> results = data['results'] ?? [];
-
-      return results.map((json) => MediaItem(
-        mediaId: json['mediaId'] as String?,
-        mediaType: json['mediaType'] ?? 'movie',
-        title: json['title'] ?? 'Unknown',
-        imageUrl: json['imageUrl'] ?? '',
-        bannerUrl: json['bannerUrl'] as String?,
-        genres: List<String>.from(json['genres'] ?? []),
-        description: json['description'] ?? 'No description available yet.',
-        runtime: json['runtime'] ?? '--',
-        language: json['language'] ?? '--',
-        releaseDate: json['releaseDate'] ?? '--',
-        platforms: List<String>.from(json['platforms'] ?? []),
-        averageRating: (json['averageRating'] as num?)?.toDouble(),
-        ratingCount: json['ratingCount'] ?? 0,
-      )).toList();
+      final res = await _dio.get('/media/reviews/$mediaId', queryParameters: {'mediaType': mediaType});
+      return (res.data['reviews'] as List<dynamic>? ?? [])
+          .map((r) => Review.fromJson(r as Map<String, dynamic>))
+          .toList();
     } catch (e) {
-      print('Failed to load $endpoint: $e');
+      print('Failed to load reviews: $e');
       return [];
     }
+  }
+
+  // ---- AI recommendations — a real multi-turn conversation, matching web ----
+
+  Future<List<ChatMessage>> getChatHistory() async {
+    try {
+      final res = await _dio.get('/recommendations/chat');
+      return (res.data['messages'] as List<dynamic>? ?? [])
+          .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Failed to load chat history: $e');
+      return [];
+    }
+  }
+
+  Future<ChatMessage> sendChatMessage(String message) async {
+    try {
+      final res = await _dio.post('/recommendations/chat', data: {'message': message});
+      final data = res.data as Map<String, dynamic>;
+      return ChatMessage(
+        role: 'assistant',
+        text: data['message'] ?? '',
+        recommendations: (data['recommendations'] as List<dynamic>? ?? [])
+            .map((r) => ChatRecommendation.fromJson(r as Map<String, dynamic>))
+            .toList(),
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final msg = (data is Map && data['message'] != null) ? data['message'].toString() : null;
+      throw Exception(msg ?? 'Failed to get recommendations.');
+    }
+  }
+
+  Future<void> clearChat() async {
+    await _dio.delete('/recommendations/chat');
   }
 }

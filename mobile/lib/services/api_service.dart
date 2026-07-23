@@ -4,239 +4,259 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class ApiService {
   static final ApiService instance = ApiService._internal();
   factory ApiService() => instance;
-  ApiService._internal();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://playverseapp.onrender.com',
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
-
+  late final Dio _dio;
   final _storage = const FlutterSecureStorage();
 
-  Future<int> register({
-    required String login,
-    required String password,
+  ApiService._internal() {
+    _dio = Dio(BaseOptions(
+      // TODO: replace with the real deployed web backend URL — this is
+      // the one thing I can't fill in myself, since I don't know it.
+      baseUrl: 'http://10.0.2.2:5000/api',
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+    ));
+
+    // Attaches the stored token to every request — mirrors how a
+    // browser automatically resends its httpOnly cookie. This app has
+    // no cookie jar, so the token is sent explicitly as a header
+    // instead (the backend accepts either transport, see
+    // middleware/requireAuth.js).
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await _storage.read(key: 'auth_token');
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ));
+  }
+
+  String _errorMessage(DioException e, String fallback) {
+    final data = e.response?.data;
+    if (data is Map && data['message'] != null) return data['message'].toString();
+    return fallback;
+  }
+
+  // ---- Auth ----
+
+  Future<String> register({
     required String firstName,
     required String lastName,
+    required String username,
     required String email,
-  }) async {
-    final res = await _dio.post('/register', data: {
-      'login': login,
-      'password': password,
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-    });
-    final data = res.data;
-    if (data['error'] != '') throw Exception(data['error']);
-
-    // Deliberately NOT storing a session here anymore — accounts now
-    // require email verification before they can log in, so
-    // registering no longer logs the user in automatically. They log
-    // in explicitly, through the normal login flow, once verified.
-    return data['id'];
-  }
-
-  Future<Map<String, dynamic>> login({
-    required String login,
     required String password,
   }) async {
-    final res = await _dio.post('/login', data: {'login': login, 'password': password});
-    final data = res.data;
-    if (data['error'] != '') throw Exception(data['error']);
-
-    await _storage.write(key: 'user_id', value: data['id'].toString());
-    if (data['firstName'] != null) {
-      await _storage.write(key: 'firstName', value: data['firstName']);
-    }
-    if (data['lastName'] != null) {
-      await _storage.write(key: 'lastName', value: data['lastName']);
-    }
-    // fall back to what the user typed if the backend doesn't echo it back
-    await _storage.write(key: 'login', value: data['login'] ?? login);
-    if (data['email'] != null) {
-      await _storage.write(key: 'email', value: data['email']);
-    }
-    await _storage.write(key: 'password_length', value: password.length.toString());
-    return data;
-  }
-
-  Future<void> updateProfile({
-    String? firstName,
-    String? lastName,
-    String? login,
-    String? email,
-  }) async {
-    final userId = await getCurrentUserId();
-    if (userId == null) throw Exception('Not logged in');
-
-    final res = await _dio.post('/updateprofile', data: {
-      'userId': userId,
-      if (firstName != null) 'firstName': firstName,
-      if (lastName != null) 'lastName': lastName,
-      if (login != null) 'login': login,
-      if (email != null) 'email': email,
-    });
-    final data = res.data;
-    if (data['error'] != '') throw Exception(data['error']);
-
-    // keep local storage in sync so AccountPage reflects the change
-    // immediately and future logins don't stomp on it
-    if (firstName != null) await _storage.write(key: 'firstName', value: firstName);
-    if (lastName != null) await _storage.write(key: 'lastName', value: lastName);
-    if (login != null) await _storage.write(key: 'login', value: login);
-    if (email != null) await _storage.write(key: 'email', value: email);
-  }
-
-  Future<void> updatePassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    final userId = await getCurrentUserId();
-    if (userId == null) throw Exception('Not logged in');
-
-    final res = await _dio.post('/updatepassword', data: {
-      'userId': userId,
-      'currentPassword': currentPassword,
-      'newPassword': newPassword,
-    });
-    final data = res.data;
-    if (data['error'] != '') throw Exception(data['error']);
-    // password itself is never persisted client-side
-    // so the account page can show the right number of dots
-    await _storage.write(key: 'password_length', value: newPassword.length.toString());
-  }
-
-  Future<void> addMedia({required int userId, required String mediaId, required String title, required String mediaType, required String playlistName, double? userRating}) async {
-    final res = await _dio.post('/addmedia', data: {
-      'userId': userId,
-      'mediaId': mediaId,
-      'title': title,
-      'mediaType': mediaType,
-      'playlistName': playlistName,
-      if (userRating != null) 'userRating': userRating,
-    });
-    final data = res.data;
-    if (data['error'] != null && data['error'] != '') throw Exception(data['error']);
-  }
-
-  Future<void> removeMedia({required int userId, required String mediaId, required String playlistName}) async {
-    await _dio.post('/removemedia', data: {'userId': userId, 'mediaId': mediaId, 'playlistName': playlistName});
-  }
-
-  Future<void> createPlaylistBackend({required int userId, required String playlistName}) async {
-    final res = await _dio.post('/createplaylist', data: {'userId': userId, 'playlistName': playlistName});
-    final data = res.data;
-    if (data['error'] != null && data['error'] != '') throw Exception(data['error']);
-  }
-
-  Future<void> deletePlaylistBackend({required int userId, required String playlistName}) async {
-    await _dio.post('/deleteplaylist', data: {'userId': userId, 'playlistName': playlistName});
-  }
-
-  Future<List<String>> getPlaylistNames({required int userId}) async {
-    final res = await _dio.post('/getplaylists', data: {'userId': userId});
-    final data = res.data;
-    return List<String>.from(data['playlistNames'] ?? []);
-  }
-
-  Future<void> updateRating({
-    required int userId,
-    required String mediaId,
-    required String title,
-    required String mediaType,
-    required double newUserRating,
-  }) async {
-    await _dio.post('/updaterating', data: {
-      'userId': userId,
-      'mediaId': mediaId,
-      'title': title,
-      'mediaType': mediaType,
-      'newUserRating': newUserRating,
-    });
-  }
-
-  /// Fetches this user's existing rating and note for one media item,
-  /// so a detail page can show what they already saved instead of
-  /// starting blank every time.
-  Future<Map<String, dynamic>> getMediaUserEntry({required int userId, required String mediaId}) async {
-    final res = await _dio.post('/getmediauserentry', data: {'userId': userId, 'mediaId': mediaId});
-    final data = res.data;
-    if (data['error'] != null && data['error'] != '') throw Exception(data['error']);
-    return {
-      'rating': (data['rating'] as num?)?.toDouble(),
-      'note': data['note'] as String? ?? '',
-    };
-  }
-
-  /// Saves a personal note (max 500 chars) for one media item. Works
-  /// even if the item isn't in a playlist yet
-  Future<void> updateNote({
-    required int userId,
-    required String mediaId,
-    required String title,
-    required String mediaType,
-    required String note,
-  }) async {
-    final res = await _dio.post('/updatenote', data: {
-      'userId': userId,
-      'mediaId': mediaId,
-      'title': title,
-      'mediaType': mediaType,
-      'note': note,
-    });
-    final data = res.data;
-    if (data['error'] != null && data['error'] != '') throw Exception(data['error']);
-  }
-
-  Future<List<dynamic>> getRankedMedia({required int userId, String? mediaType}) async {
-    final res = await _dio.post('/getrankedmedia', data: {'userId': userId, if (mediaType != null) 'mediaType': mediaType});
-    return res.data['results'] ?? [];
-  }
-
-  /// Looks up a YouTube trailer for the given title, returning the
-  /// video ID to open (or null if none was found / the request failed).
-  Future<String?> getTrailerVideoId({required String title, required String mediaType}) async {
     try {
-      final res = await _dio.get('/gettrailer', queryParameters: {'title': title, 'mediaType': mediaType});
-      final data = res.data;
-      if (data['error'] != null && data['error'] != '') {
-        print('Backend error on /gettrailer: ${data['error']}');
-        return null;
+      final res = await _dio.post('/auth/register', data: {
+        'firstName': firstName,
+        'lastName': lastName,
+        'username': username,
+        'email': email,
+        'password': password,
+      });
+      return res.data['message'] ?? 'Account created.';
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Registration failed.'));
+    }
+  }
+
+  /// Returns the raw response map ({message, user, token}) so the
+  /// caller can decide what to do with it — login() itself handles
+  /// storing the token and basic profile info.
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final res = await _dio.post('/auth/login', data: {'email': email, 'password': password});
+      final data = res.data as Map<String, dynamic>;
+
+      final token = data['token'] as String?;
+      if (token != null) {
+        await _storage.write(key: 'auth_token', value: token);
       }
-      return data['videoId'] as String?;
-    } catch (e) {
-      print('Failed to fetch trailer: $e');
+
+      final user = data['user'] as Map<String, dynamic>?;
+      if (user != null) {
+        await _storage.write(key: 'userId', value: user['id']?.toString() ?? '');
+        await _storage.write(key: 'firstName', value: user['firstName'] ?? '');
+        await _storage.write(key: 'lastName', value: user['lastName'] ?? '');
+        await _storage.write(key: 'username', value: user['username'] ?? '');
+        await _storage.write(key: 'email', value: user['email'] ?? '');
+        await _storage.write(key: 'reviewDisplayPreference', value: user['reviewDisplayPreference'] ?? 'fullName');
+      }
+
+      return data;
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Login failed.'));
+    }
+  }
+
+  Future<String> resendVerificationEmail(String email) async {
+    try {
+      final res = await _dio.post('/auth/resend-verification', data: {'email': email});
+      return res.data['message'] ?? 'A new verification email has been sent.';
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Failed to resend verification email.'));
+    }
+  }
+
+  Future<String> forgotPassword(String email) async {
+    try {
+      final res = await _dio.post('/auth/forgot-password', data: {'email': email});
+      return res.data['message'] ?? 'If an account matching that exists, a reset link has been sent.';
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Failed to send reset email.'));
+    }
+  }
+
+  /// Hits /me to confirm the stored token is still valid and fetch the
+  /// current profile — returns null if not logged in or the token's
+  /// expired, rather than throwing, since "not logged in" is a normal
+  /// state to check for, not an error.
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    try {
+      final res = await _dio.get('/auth/me');
+      return res.data['user'] as Map<String, dynamic>?;
+    } on DioException {
       return null;
     }
   }
 
-  Future<String> resendVerificationEmail(String login) async {
-    final res = await _dio.post('/resendverification', data: {'login': login});
-    final data = res.data;
-    if (data['error'] != null && data['error'] != '') throw Exception(data['error']);
-    return 'A new verification email has been sent.';
+  Future<bool> isLoggedIn() async {
+    final token = await _storage.read(key: 'auth_token');
+    return token != null;
   }
 
-  Future<String> forgotPassword(String login) async {
-    final res = await _dio.post('/forgotpassword', data: {'login': login});
-    final data = res.data;
-    if (data['error'] != null && data['error'] != '') throw Exception(data['error']);
-    return data['message'] ?? 'If an account matching that exists, a reset link has been sent.';
-  }
+  Future<void> updateAccount({
+    required String firstName,
+    required String lastName,
+    required String email,
+    String? currentPassword,
+    String? password,
+    String? username,
+    String? reviewDisplayPreference,
+  }) async {
+    try {
+      final res = await _dio.patch('/auth/account', data: {
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        if (username != null) 'username': username,
+        if (reviewDisplayPreference != null) 'reviewDisplayPreference': reviewDisplayPreference,
+        if (password != null && password.isNotEmpty) 'password': password,
+        if (currentPassword != null && currentPassword.isNotEmpty) 'currentPassword': currentPassword,
+      });
+      final data = res.data as Map<String, dynamic>;
 
-  Future<int?> getCurrentUserId() async {
-    final id = await _storage.read(key: 'user_id');
-    return id != null ? int.parse(id) : null;
+      // Changing the email requires re-verification, and the backend
+      // invalidates the session when that happens — match that by
+      // logging out locally too, rather than pretending we're still
+      // signed in with a cookie/token the server no longer honors.
+      if (data['requiresEmailVerification'] == true) {
+        await logout();
+      } else {
+        await _storage.write(key: 'firstName', value: firstName);
+        await _storage.write(key: 'lastName', value: lastName);
+        await _storage.write(key: 'email', value: email);
+        if (username != null) await _storage.write(key: 'username', value: username);
+        if (reviewDisplayPreference != null) {
+          await _storage.write(key: 'reviewDisplayPreference', value: reviewDisplayPreference);
+        }
+      }
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Failed to update account.'));
+    }
   }
-
-  Future<void> logout() async => await _storage.deleteAll();
 
   Future<void> deleteAccount() async {
-    final userId = await getCurrentUserId();
-    if (userId == null) return;
+    try {
+      await _dio.delete('/auth/account');
+    } on DioException catch (e) {
+      throw Exception(_errorMessage(e, 'Failed to delete account.'));
+    } finally {
+      await logout();
+    }
+  }
 
-    await _dio.post('/deleteaccount', data: {'userId': userId});
+  Future<void> logout() async {
+    try {
+      await _dio.post('/auth/logout');
+    } catch (_) {
+      // Best-effort — clear the local session regardless of whether
+      // the network call succeeds.
+    }
+    await _storage.deleteAll();
+  }
+
+  // ---- Custom playlists ----
+
+  Future<List<Map<String, dynamic>>> getCustomPlaylists() async {
+    final res = await _dio.get('/auth/custom-playlists');
+    return List<Map<String, dynamic>>.from(res.data['playlists'] ?? []);
+  }
+
+  Future<Map<String, dynamic>> createCustomPlaylist(String name) async {
+    final res = await _dio.post('/auth/custom-playlists', data: {'name': name});
+    return res.data['playlist'] as Map<String, dynamic>;
+  }
+
+  Future<void> renameCustomPlaylist(String playlistId, String name) async {
+    await _dio.patch('/auth/custom-playlists/$playlistId', data: {'name': name});
+  }
+
+  Future<void> deleteCustomPlaylist(String playlistId) async {
+    await _dio.delete('/auth/custom-playlists/$playlistId');
+  }
+
+  /// Returns true if the item was actually added, false if it was
+  /// already in the playlist (the backend uses this to distinguish the
+  /// two rather than treating "already there" as an error).
+  Future<bool> addItemToCustomPlaylist({
+    required String playlistId,
+    required String mediaId,
+    required String mediaType,
+  }) async {
+    final res = await _dio.post('/auth/custom-playlists/$playlistId/items', data: {
+      'mediaId': mediaId,
+      'mediaType': mediaType,
+    });
+    return res.data['added'] == true;
+  }
+
+  Future<void> removeItemFromCustomPlaylist({
+    required String playlistId,
+    required String mediaId,
+    required String mediaType,
+  }) async {
+    await _dio.delete('/auth/custom-playlists/$playlistId/items', data: {
+      'mediaId': mediaId,
+      'mediaType': mediaType,
+    });
+  }
+
+  // ---- Ratings ----
+  // Score is 1-5 (matches the existing star-picker UI) — display code
+  // is responsible for doubling it to out-of-10 where that convention
+  // is used elsewhere, the raw stored value stays 1-5 here.
+
+  Future<Map<String, dynamic>?> getRating({required String mediaId, required String mediaType}) async {
+    final res = await _dio.get('/auth/ratings/$mediaId', queryParameters: {'mediaType': mediaType});
+    return res.data['rating'] as Map<String, dynamic>?;
+  }
+
+  Future<void> setRating({
+    required String mediaId,
+    required String mediaType,
+    required int score,
+    String note = '',
+  }) async {
+    await _dio.put('/auth/ratings/$mediaId', data: {
+      'mediaType': mediaType,
+      'score': score,
+      'note': note,
+    });
   }
 }
