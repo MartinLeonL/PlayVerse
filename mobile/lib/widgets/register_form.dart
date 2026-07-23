@@ -14,6 +14,7 @@ class RegisterForm extends StatefulWidget {
 class _RegisterFormState extends State<RegisterForm> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -24,11 +25,21 @@ class _RegisterFormState extends State<RegisterForm> {
 
   Future<void> _register() async {
     final email = _emailController.text.trim();
+    final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty || username.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      }
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(username)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Username must be 3-20 characters, letters/numbers/underscores only')),
+        );
       }
       return;
     }
@@ -57,11 +68,11 @@ class _RegisterFormState extends State<RegisterForm> {
     setState(() => _isLoading = true);
     try {
       await ApiService().register(
-        login: email,
-        password: password,
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
+        username: username,
         email: email,
+        password: password,
       );
 
       if (mounted) {
@@ -71,7 +82,7 @@ class _RegisterFormState extends State<RegisterForm> {
             duration: Duration(seconds: 5),
           ),
         );
-        // Registration no longer logs the user in automatically — the
+        // Registration doesn't log the user in automatically — the
         // account needs to be verified first. Switch back to the Login
         // tab so they can log in once they've clicked the email link.
         widget.onRegistered?.call();
@@ -99,13 +110,15 @@ class _RegisterFormState extends State<RegisterForm> {
             Expanded(child: _buildField('Last Name', _lastNameController)),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
+        _buildField('Username', _usernameController, icon: Icons.alternate_email),
+        const SizedBox(height: 10),
         _buildField('Email', _emailController, icon: Icons.email_outlined),
-        const SizedBox(height: 16),
-        _buildPasswordField('New Password', _passwordController, _obscurePassword, () => setState(() => _obscurePassword = !_obscurePassword)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
+        _buildPasswordField('Password', _passwordController, _obscurePassword, () => setState(() => _obscurePassword = !_obscurePassword)),
+        const SizedBox(height: 10),
         _buildPasswordField('Confirm Password', _confirmPasswordController, _obscureConfirm, () => setState(() => _obscureConfirm = !_obscureConfirm)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -129,7 +142,7 @@ class _RegisterFormState extends State<RegisterForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           decoration: _fieldDecoration(label, icon),
@@ -143,7 +156,7 @@ class _RegisterFormState extends State<RegisterForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           obscureText: obscure,
@@ -161,7 +174,7 @@ class _RegisterFormState extends State<RegisterForm> {
       prefixIcon: icon != null ? Icon(icon, color: Colors.grey) : null,
       filled: true,
       fillColor: Colors.grey[100],
-      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(vertical: 11),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
     );
   }
@@ -170,6 +183,7 @@ class _RegisterFormState extends State<RegisterForm> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();

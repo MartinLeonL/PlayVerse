@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:playverseapp/services/api_service.dart';
+import '../services/api_service.dart';
 import '../pages/account_page.dart';
 import '../pages/auth_page.dart';
 import '../pages/playlists_page.dart';
 import '../theme/app_colors.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ProfileDropdown extends StatefulWidget {
   final bool visible;
@@ -44,15 +43,6 @@ class _ProfileDropdownState extends State<ProfileDropdown> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FutureBuilder<String>(
-                          future: _getUserName(),
-                          builder: (context, snapshot) {
-                            return Text(
-                              snapshot.data ?? 'Jane Doe',
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
-                            );
-                          },
-                        ),
                         ...items.map((item) {
                           return InkWell(
                             onTap: () {
@@ -99,12 +89,5 @@ class _ProfileDropdownState extends State<ProfileDropdown> {
         ),
       ),
     );
-  }
-
-  Future<String> _getUserName() async {
-    final storage = const FlutterSecureStorage();
-    final firstName = await storage.read(key: 'firstName') ?? 'Jane';
-    final lastName = await storage.read(key: 'lastName') ?? 'Doe';
-    return '$firstName $lastName';
   }
 }
