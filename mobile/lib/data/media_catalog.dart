@@ -1,5 +1,5 @@
+import '../models/media_item.dart';
 import '../services/media_service.dart';
-import '../widgets/media_row.dart';
 
 class MediaCatalog {
   MediaCatalog._();
