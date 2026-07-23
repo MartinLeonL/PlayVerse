@@ -11,30 +11,34 @@ async function request(path) {
   return data;
 }
 
-export function fetchMovies({ page = 1, genre } = {}) {
+export function fetchMovies({ page = 1, genre, sort } = {}) {
   const params = new URLSearchParams({ page: String(page) });
   if (genre && genre !== "All") params.set("genre", genre);
+  if (sort) params.set("sort", sort);
 
   return request(`/api/media/movies?${params.toString()}`);
 }
 
-export function fetchShows({ page = 1, genre } = {}) {
+export function fetchShows({ page = 1, genre, sort } = {}) {
   const params = new URLSearchParams({ page: String(page) });
   if (genre && genre !== "All") params.set("genre", genre);
+  if (sort) params.set("sort", sort);
 
   return request(`/api/media/shows?${params.toString()}`);
 }
 
-export function fetchGames({ page = 1, genre } = {}) {
+export function fetchGames({ page = 1, genre, sort } = {}) {
   const params = new URLSearchParams({ page: String(page) });
   if (genre && genre !== "All") params.set("genre", genre);
+  if (sort) params.set("sort", sort);
 
   return request(`/api/media/games?${params.toString()}`);
 }
 
-export function fetchMusic({ genre } = {}) {
-  const params = new URLSearchParams();
+export function fetchMusic({ page = 1, genre, sort } = {}) {
+  const params = new URLSearchParams({ page: String(page) });
   if (genre && genre !== "All") params.set("genre", genre);
+  if (sort) params.set("sort", sort);
 
   return request(`/api/media/music?${params.toString()}`);
 }
@@ -63,6 +67,11 @@ export function fetchHero() {
 
 export function fetchMediaItem(type, id) {
   return request(`/api/media/item/${type}/${id}`);
+}
+
+export function fetchReviews(mediaId, mediaType) {
+  const params = new URLSearchParams({ mediaType });
+  return request(`/api/media/reviews/${encodeURIComponent(mediaId)}?${params.toString()}`);
 }
 
 // Our normalized IDs look like "movie-27205", "show-1399", "music-3135556",
