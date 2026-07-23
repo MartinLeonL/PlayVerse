@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../contexts/ToastContext.jsx";
 import {
   Mail,
   Lock,
@@ -47,10 +48,12 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [lastname, setLastname] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
+  const showToast = useToast();
 
   const API_URL = "http://localhost:5000";
 
@@ -66,7 +69,12 @@ function Login() {
     e.preventDefault();
 
     if (password !== confirmPassword && mode === "register") {
-      alert("Passwords do not match.");
+      showToast("Passwords do not match.", { tone: "error" });
+      return;
+    }
+
+    if (mode === "register" && !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      showToast("Username must be 3-20 characters, letters/numbers/underscores only.", { tone: "error" });
       return;
     }
 
@@ -78,6 +86,7 @@ function Login() {
       ? {
           firstName: name,
           lastName: lastname,
+          username,
           email,
           password,
         }
@@ -103,14 +112,14 @@ function Login() {
       }
 
       if (isRegistering) {
-        alert(data.message);
+        showToast(data.message);
         navigate("/login");
         return;
       }
 
       navigate("/home");
     } catch (error) {
-      alert(error.message);
+      showToast(error.message, { tone: "error" });
     }
   }
 
@@ -162,14 +171,14 @@ function Login() {
             {mode === "login" ? (
               <form onSubmit={handleSubmit}>
                 <label className="field-label" htmlFor="email">
-                  Email
+                  Email or Username
                 </label>
                 <div className="field">
                   <Mail size={16} className="field-icon" />
                   <input
                     id="email"
-                    type="email"
-                    placeholder="Enter your email"
+                    type="text"
+                    placeholder="Enter your email or username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -261,6 +270,20 @@ function Login() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <label className="field-label" htmlFor="username">
+                  Username
+                </label>
+                <div className="field">
+                  <input
+                    id="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
                 </div>
 
                 <label className="field-label" htmlFor="email">

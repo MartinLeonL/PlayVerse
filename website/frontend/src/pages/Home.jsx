@@ -4,16 +4,16 @@ import {
   Calendar,
   Clock,
   Plus,
-  Check,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
+import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
 import { fetchMovies, fetchShows, fetchMusic, fetchGames, fetchHero } from "../utils/api.js";
+import { formatScore } from "../utils/format.js";
 import "./Home.css";
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-function MediaRow({ title, items, onSelect }) {
+function MediaRow({ title, items, onSelect, onAddToPlaylist }) {
   const scrollerRef = useRef(null);
 
   function scroll(dir) {
@@ -38,8 +38,35 @@ function MediaRow({ title, items, onSelect }) {
             >
               <div className="poster">
                 <img src={item.posterImage} alt={`${item.title} poster`} />
+                {item.userScore != null && (
+                  <span className="score-badge score-badge-user">
+                    ★ {formatScore(item.userScore)}
+                  </span>
+                )}
+                {item.type === "music" && item.artist ? (
+                  <span className="score-badge score-badge-artist">{item.artist}</span>
+                ) : (
+                  item.score != null && (
+                    <span className="score-badge score-badge-external">
+                      ★ {formatScore(item.score)}
+                    </span>
+                  )
+                )}
               </div>
-              <p>{item.title}</p>
+              <div className="poster-card-title-row">
+                <p>{item.title}</p>
+                <button
+                  type="button"
+                  className="poster-card-add-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddToPlaylist(item);
+                  }}
+                  aria-label={`Add ${item.title} to playlist`}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -74,16 +101,12 @@ function Home() {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
 
-  const [addingMediaId, setAddingMediaId] = useState(null);
-  const [addedMediaIds, setAddedMediaIds] = useState(() => new Set());
-  const [playlistMessage, setPlaylistMessage] = useState("");
-  const [playlistError, setPlaylistError] = useState("");
-  const [playlistsLoading, setPlaylistsLoading] = useState(true);
+  // Which item the "Add to Playlist" modal is currently open for, if any.
+  const [pickerItem, setPickerItem] = useState(null);
 
   const navigate = useNavigate();
 
   const hero = heroSlides[heroIndex];
-  const heroIsInPlaylist = hero ? addedMediaIds.has(String(hero.id)) : false;
 
   useEffect(() => {
     async function loadCatalog() {
@@ -115,159 +138,12 @@ function Home() {
     loadCatalog();
   }, []);
 
-  useEffect(() => {
-    async function loadPlaylists() {
-      try {
-        setPlaylistsLoading(true);
-        setPlaylistError("");
-
-        const response = await fetch(`${API_URL}/api/auth/playlists`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        const data = await response.json();
-
-        if (response.status === 401) {
-          navigate("/login", {
-            replace: true,
-          });
-
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(data.message || "Unable to load your playlists.");
-        }
-
-        const playlistIds = [
-          ...(data.playlists?.movies || []),
-          ...(data.playlists?.tvSeries || []),
-          ...(data.playlists?.music || []),
-          ...(data.playlists?.games || []),
-        ].map(String);
-
-        setAddedMediaIds(new Set(playlistIds));
-      } catch (error) {
-        setPlaylistError(error.message);
-      } finally {
-        setPlaylistsLoading(false);
-      }
-    }
-
-    loadPlaylists();
-  }, [navigate]);
-
   function changeHero(dir) {
     setHeroIndex((i) => (i + dir + heroSlides.length) % heroSlides.length);
   }
 
   function openMedia(item) {
     navigate(`/media/${encodeURIComponent(item.id)}`);
-  }
-
-  function handlePlaylistClick(item) {
-    if (addedMediaIds.has(String(item.id))) {
-      removeFromPlaylist(item);
-    } else {
-      addToPlaylist(item);
-    }
-  }
-
-  async function removeFromPlaylist(item) {
-    try {
-      setAddingMediaId(item.id);
-      setPlaylistMessage("");
-      setPlaylistError("");
-
-      const response = await fetch(`${API_URL}/api/auth/playlists/items`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          mediaId: item.id,
-          mediaType: item.type,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.status === 401) {
-        navigate("/login", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to remove this item from your playlist.",
-        );
-      }
-
-      setAddedMediaIds((previousIds) => {
-        const nextIds = new Set(previousIds);
-        nextIds.delete(String(item.id));
-        return nextIds;
-      });
-
-      setPlaylistMessage(data.message);
-    } catch (error) {
-      setPlaylistError(error.message);
-    } finally {
-      setAddingMediaId(null);
-    }
-  }
-
-  async function addToPlaylist(item) {
-    try {
-      setAddingMediaId(item.id);
-      setPlaylistMessage("");
-      setPlaylistError("");
-
-      const response = await fetch(`${API_URL}/api/auth/playlists/items`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          mediaId: item.id,
-          mediaType: item.type,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.status === 401) {
-        navigate("/login", {
-          replace: true,
-        });
-
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Unable to add this item to your playlist.",
-        );
-      }
-
-      setAddedMediaIds((previousIds) => {
-        const nextIds = new Set(previousIds);
-        nextIds.add(String(item.id));
-        return nextIds;
-      });
-
-      setPlaylistMessage(data.message);
-    } catch (error) {
-      setPlaylistError(error.message);
-    } finally {
-      setAddingMediaId(null);
-    }
   }
 
   if (catalogLoading) {
@@ -324,28 +200,10 @@ function Home() {
                   <button
                     type="button"
                     className="hero-playlist"
-                    onClick={() => handlePlaylistClick(hero)}
-                    disabled={playlistsLoading || addingMediaId === hero.id}
+                    onClick={() => setPickerItem(hero)}
                   >
-                    {playlistsLoading ? (
-                      "Loading..."
-                    ) : addingMediaId === hero.id ? (
-                      heroIsInPlaylist ? (
-                        "Removing..."
-                      ) : (
-                        "Adding..."
-                      )
-                    ) : heroIsInPlaylist ? (
-                      <>
-                        <Check size={16} />
-                        Remove
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={16} />
-                        Playlist
-                      </>
-                    )}
+                    <Plus size={16} />
+                    Playlist
                   </button>
                 </div>
               </div>
@@ -389,13 +247,15 @@ function Home() {
           </>
         )}
 
-        {playlistError && <p className="account-error">{playlistError}</p>}
-
-        <MediaRow title="Popular Movies" items={movies} onSelect={openMedia} />
-        <MediaRow title="Popular Shows" items={shows} onSelect={openMedia} />
-        <MediaRow title="Popular Music" items={music} onSelect={openMedia} />
-        <MediaRow title="Popular Games" items={games} onSelect={openMedia} />
+        <MediaRow title="Popular Movies" items={movies} onSelect={openMedia} onAddToPlaylist={setPickerItem} />
+        <MediaRow title="Popular Shows" items={shows} onSelect={openMedia} onAddToPlaylist={setPickerItem} />
+        <MediaRow title="Popular Music" items={music} onSelect={openMedia} onAddToPlaylist={setPickerItem} />
+        <MediaRow title="Popular Games" items={games} onSelect={openMedia} onAddToPlaylist={setPickerItem} />
       </main>
+
+      {pickerItem && (
+        <PlaylistPickerModal item={pickerItem} onClose={() => setPickerItem(null)} />
+      )}
     </div>
   );
 }

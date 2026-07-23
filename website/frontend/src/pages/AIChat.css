@@ -337,6 +337,10 @@
   color: #facc15;
 }
 
+.ai-rec-rating-user svg {
+  color: #60a5fa;
+}
+
 .ai-rec-reason {
   font-size: 12px;
   color: var(--pv-text-muted);

@@ -4,6 +4,7 @@ import { X, Plus, Pencil, Trash2 } from "lucide-react";
 
 import Navbar from "../components/Navbar.jsx";
 import { fetchMediaItem, parseMediaId } from "../utils/api.js";
+import { formatScore } from "../utils/format.js";
 
 import "./Playlists.css";
 import "../components/AccountModal.css";
@@ -369,6 +370,19 @@ function Playlists() {
                     <button
                       type="button"
                       className="playlist-hub-icon-btn"
+                      onClick={() =>
+                        navigate(
+                          `/search?addTo=${encodeURIComponent(playlist.id)}&addToName=${encodeURIComponent(playlist.name)}`,
+                        )
+                      }
+                      aria-label={`Add to ${playlist.name}`}
+                    >
+                      <Plus size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="playlist-hub-icon-btn"
                       onClick={() => {
                         setRenamingPlaylist(playlist);
                         setRenameValue(playlist.name);
@@ -419,6 +433,16 @@ function Playlists() {
                           }}
                         >
                           <img src={item.posterImage} alt={`${item.title} poster`} />
+                          {item.userScore != null && (
+                            <span className="score-badge score-badge-user">
+                              ★ {formatScore(item.userScore)}
+                            </span>
+                          )}
+                          {item.score != null && (
+                            <span className="score-badge score-badge-external">
+                              ★ {formatScore(item.score)}
+                            </span>
+                          )}
                         </div>
 
                         <p>{item.title}</p>

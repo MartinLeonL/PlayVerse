@@ -16,11 +16,30 @@
   margin: 0 0 16px;
 }
 
+.category-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
 .category-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
+}
+
+.category-sort-select {
+  border: 1px solid var(--pv-border);
+  background: var(--pv-surface);
+  color: var(--pv-text);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .genre-pill {
@@ -46,10 +65,12 @@
 }
 
 .category-card {
+  width: 200px;
   cursor: pointer;
 }
 
 .category-poster {
+  position: relative;
   width: 200px;
   height: 300px;
   aspect-ratio: 150 / 210;
@@ -60,17 +81,72 @@
   text-align: center;
 }
 
+.score-badge {
+  position: absolute;
+  top: 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.score-badge.score-badge-user {
+  left: 8px;
+  color: #60a5fa;
+}
+
+.score-badge.score-badge-external {
+  right: 8px;
+  color: #facc15;
+}
+
+.score-badge.score-badge-artist {
+  right: 8px;
+  color: #fff;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .category-poster span {
   color: #fff;
   font-weight: 600;
   font-size: 14px;
 }
 
-.category-card p {
-  margin: 8px 0 0;
+.poster-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.poster-card-title-row p {
+  margin: 0;
   font-size: 14px;
   color: var(--pv-text);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poster-card-add-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: var(--pv-purple-strong);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .category-card-genres {
