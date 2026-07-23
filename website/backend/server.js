@@ -51,13 +51,16 @@ app.use(
       return callback(error);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   })
 );
 
 // Explicitly handle preflight OPTIONS requests for all routes
-app.options("*", cors());
+// Express 5's routing library (path-to-regexp v7+) dropped support for
+// a bare "*" wildcard — it now requires a name, or a raw regex works
+// too and is unaffected by that change either way.
+app.options(/.*/, cors());
 
 app.use(express.json());
 app.use(cookieParser());

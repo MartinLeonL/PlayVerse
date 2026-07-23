@@ -1,68 +1,155 @@
 const express = require("express");
 
+const { getDB } = require("./db");
 const tmdb = require("./services/tmdb");
 const rawg = require("./services/rawg");
 const deezer = require("./services/deezer");
+const { getPool } = require("./services/mediaPool");
+const { sortItems } = require("./services/mediaSort");
+const { getUserScoreMap, getUserScoreForItem } = require("./services/ratingsAggregate");
 
 const router = express.Router();
+
+const PAGE_SIZE = 20;
+const VALID_SORTS = new Set([
+  "az",
+  "za",
+  "recent",
+  "highest",
+  "lowest",
+  "userScoreAsc",
+  "userScoreDesc",
+]);
 
 function parsePage(value) {
   const page = Number(value);
   return Number.isFinite(page) && page > 0 ? page : 1;
 }
 
-// GET /api/media/movies?page=1&genre=28
+// Attaches the PlayVerse community's own average rating to every item —
+// separate from `score`, which is the external TMDB/RAWG rating. One
+// aggregation query per call (not one per item), since every item here
+// is the same media type.
+async function attachUserScores(items, mediaType) {
+  if (items.length === 0) return items;
+
+  const userScoreMap = await getUserScoreMap(mediaType);
+
+  return items.map((item) => {
+    const stats = userScoreMap.get(item.id);
+    return {
+      ...item,
+      userScore: stats ? stats.avg : null,
+      userScoreCount: stats ? stats.count : 0,
+    };
+  });
+}
+
+// Shared by /movies, /shows, /games, /music — handles the sort=... path
+// by pulling from the cached pool for that media type (and genre, if
+// one's selected) and slicing the requested page out of the sorted
+// result. Returns null if `sort` isn't one of the special values, so
+// the caller falls through to its normal (genre-filtered or default
+// popular) behavior.
+async function trySortedResponse(mediaType, req) {
+  const sort = req.query.sort;
+  if (!VALID_SORTS.has(sort)) return null;
+
+  const page = parsePage(req.query.page);
+  const genreId = req.query.genre || null;
+  const pool = await getPool(mediaType, genreId);
+
+  // Needed either way now — for the sort itself when it's userScore-
+  // based, and for attaching userScore to the response regardless of
+  // which sort was actually requested. Computing it once here avoids a
+  // second, redundant aggregation query.
+  const userScoreMap = await getUserScoreMap(mediaType);
+
+  const sorted = sortItems(pool, sort, userScoreMap);
+  const start = (page - 1) * PAGE_SIZE;
+  const pageItems = sorted.slice(start, start + PAGE_SIZE);
+
+  const items = pageItems.map((item) => {
+    const stats = userScoreMap.get(item.id);
+    return {
+      ...item,
+      userScore: stats ? stats.avg : null,
+      userScoreCount: stats ? stats.count : 0,
+    };
+  });
+
+  return {
+    items,
+    page,
+    totalPages: Math.max(1, Math.ceil(sorted.length / PAGE_SIZE)),
+  };
+}
+
+// GET /api/media/movies?page=1&genre=28  OR  ?sort=az|za|recent|highest|lowest|userScoreAsc|userScoreDesc
 router.get("/movies", async (req, res, next) => {
   try {
-    const page = parsePage(req.query.page);
+    const sorted = await trySortedResponse("movie", req);
+    if (sorted) return res.json(sorted);
 
+    const page = parsePage(req.query.page);
     const result = req.query.genre
       ? await tmdb.getMoviesByGenre(req.query.genre, page)
       : await tmdb.getPopularMovies(page);
 
+    result.items = await attachUserScores(result.items, "movie");
     res.json(result);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/media/shows?page=1&genre=18
+// GET /api/media/shows?page=1&genre=18  OR  ?sort=...
 router.get("/shows", async (req, res, next) => {
   try {
-    const page = parsePage(req.query.page);
+    const sorted = await trySortedResponse("show", req);
+    if (sorted) return res.json(sorted);
 
+    const page = parsePage(req.query.page);
     const result = req.query.genre
       ? await tmdb.getShowsByGenre(req.query.genre, page)
       : await tmdb.getPopularShows(page);
 
+    result.items = await attachUserScores(result.items, "show");
     res.json(result);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/media/games?page=1&genre=action
+// GET /api/media/games?page=1&genre=action  OR  ?sort=...
 router.get("/games", async (req, res, next) => {
   try {
-    const page = parsePage(req.query.page);
+    const sorted = await trySortedResponse("game", req);
+    if (sorted) return res.json(sorted);
 
+    const page = parsePage(req.query.page);
     const result = req.query.genre
       ? await rawg.getGamesByGenre(req.query.genre, page)
       : await rawg.getPopularGames(page);
 
+    result.items = await attachUserScores(result.items, "game");
     res.json(result);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/media/music?genre=132
+// GET /api/media/music?genre=132  OR  ?sort=...&page=1
 router.get("/music", async (req, res, next) => {
   try {
+    const sorted = await trySortedResponse("music", req);
+    if (sorted) return res.json(sorted);
+
     const result = req.query.genre
       ? await deezer.getTracksByGenre(req.query.genre)
       : await deezer.getChartTracks(30);
 
+    result.items = await attachUserScores(result.items, "music");
     res.json(result);
   } catch (error) {
     next(error);
@@ -87,6 +174,13 @@ router.get("/genres/:type", async (req, res, next) => {
     next(error);
   }
 });
+
+const SEARCH_TYPE_TO_MEDIA_TYPE = {
+  movies: "movie",
+  shows: "show",
+  games: "game",
+  music: "music",
+};
 
 // GET /api/media/search?type=movies&query=star&page=1
 router.get("/search", async (req, res, next) => {
@@ -117,6 +211,7 @@ router.get("/search", async (req, res, next) => {
         return res.status(400).json({ message: "Invalid media type." });
     }
 
+    result.items = await attachUserScores(result.items, SEARCH_TYPE_TO_MEDIA_TYPE[type]);
     res.json(result);
   } catch (error) {
     next(error);
@@ -133,7 +228,7 @@ router.get("/hero", async (req, res, next) => {
       rawg.getPopularGames(1),
     ]);
 
-    const items = [
+    const rawItems = [
       movies.items[0],
       movies.items[1],
       shows.items[0],
@@ -141,7 +236,71 @@ router.get("/hero", async (req, res, next) => {
       games.items[0],
     ].filter(Boolean);
 
+    // Mixed media types in one small list — a per-item lookup here is
+    // simpler than juggling four separate category maps for just 5 items.
+    const items = await Promise.all(
+      rawItems.map(async (item) => {
+        const stats = await getUserScoreForItem(item.id, item.type);
+        return {
+          ...item,
+          userScore: stats ? stats.avg : null,
+          userScoreCount: stats ? stats.count : 0,
+        };
+      }),
+    );
+
     res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/media/reviews/:mediaId?mediaType=movie|show|game|music
+// Public — anyone can read reviews, no login required. Only entries
+// with actual written text count as a "review"; a bare star rating
+// with no note still counts toward the average score (via
+// ratingsAggregate.js) but isn't shown in this list.
+router.get("/reviews/:mediaId", async (req, res, next) => {
+  try {
+    const { mediaId } = req.params;
+    const mediaType = String(req.query.mediaType || "").trim();
+
+    if (!mediaId || !mediaType) {
+      return res.status(400).json({ message: "mediaId and mediaType are required." });
+    }
+
+    const db = getDB();
+
+    const pipeline = [
+      { $unwind: "$ratings" },
+      {
+        $match: {
+          "ratings.mediaId": mediaId,
+          "ratings.mediaType": mediaType,
+          "ratings.note": { $ne: "" },
+        },
+      },
+      { $sort: { "ratings.updatedAt": -1 } },
+      {
+        $project: {
+          _id: 0,
+          displayName: {
+            $cond: {
+              if: { $eq: ["$reviewDisplayPreference", "username"] },
+              then: "$username",
+              else: { $concat: ["$firstName", " ", "$lastName"] },
+            },
+          },
+          score: "$ratings.score",
+          note: "$ratings.note",
+          updatedAt: "$ratings.updatedAt",
+        },
+      },
+    ];
+
+    const reviews = await db.collection("users").aggregate(pipeline).toArray();
+
+    res.json({ reviews });
   } catch (error) {
     next(error);
   }
@@ -171,7 +330,14 @@ router.get("/item/:type/:id", async (req, res, next) => {
         return res.status(404).json({ message: "Media type not found." });
     }
 
-    res.json({ item });
+    const stats = await getUserScoreForItem(item.id, type);
+    const enrichedItem = {
+      ...item,
+      userScore: stats ? stats.avg : null,
+      userScoreCount: stats ? stats.count : 0,
+    };
+
+    res.json({ item: enrichedItem });
   } catch (error) {
     next(error);
   }
