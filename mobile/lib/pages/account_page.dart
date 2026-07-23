@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -16,12 +14,12 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  File? _profileImage;
-
   String _firstName = 'Loading...';
   String _lastName = 'Loading...';
+  String _username = 'Loading...';
   String _email = 'Loading...';
   int _passwordLength = 8;
+  String _reviewDisplayPreference = 'fullName';
 
   @override
   void initState() {
@@ -33,27 +31,41 @@ class _AccountPageState extends State<AccountPage> {
     final storage = const FlutterSecureStorage();
     final first = await storage.read(key: 'firstName') ?? 'John';
     final last = await storage.read(key: 'lastName') ?? 'Doe';
+    final username = await storage.read(key: 'username') ?? '';
     final email = await storage.read(key: 'email') ?? 'johndoe@gmail.com';
     final passwordLengthStr = await storage.read(key: 'password_length');
     final passwordLength = int.tryParse(passwordLengthStr ?? '') ?? 8;
+    final displayPreference = await storage.read(key: 'reviewDisplayPreference') ?? 'fullName';
 
     if (mounted) {
       setState(() {
         _firstName = first;
         _lastName = last;
+        _username = username;
         _email = email;
         _passwordLength = passwordLength;
+        _reviewDisplayPreference = displayPreference;
       });
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null) {
-      setState(() {
-        _profileImage = File(picked.path);
-      });
+  Future<void> _setReviewDisplayPreference(String preference) async {
+    final previous = _reviewDisplayPreference;
+    setState(() => _reviewDisplayPreference = preference);
+
+    try {
+      await ApiService().updateAccount(
+        firstName: _firstName,
+        lastName: _lastName,
+        username: _username,
+        email: _email,
+        reviewDisplayPreference: preference,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _reviewDisplayPreference = previous);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
+      }
     }
   }
 
@@ -73,7 +85,6 @@ class _AccountPageState extends State<AccountPage> {
     if (confirmed == true) {
       try {
         await ApiService().deleteAccount();
-        await ApiService().logout();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted')));
@@ -96,122 +107,137 @@ class _AccountPageState extends State<AccountPage> {
     return AppShell(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Stack(
-          clipBehavior: Clip.none,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 40),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  EditableField(
+                    key: ValueKey('firstName_$_firstName'),
+                    label: 'First Name',
+                    initialValue: _firstName,
+                    onSave: (newValue, {currentPassword}) async {
+                      await ApiService().updateAccount(
+                        firstName: newValue,
+                        lastName: _lastName,
+                        username: _username,
+                        email: _email,
+                      );
+                      if (mounted) setState(() => _firstName = newValue);
+                    },
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      EditableField(
-                        key: ValueKey('firstName_$_firstName'),
-                        label: 'First Name',
-                        initialValue: _firstName,
-                        onSave: (newValue, {currentPassword}) async {
-                          await ApiService().updateProfile(firstName: newValue);
-                          if (mounted) setState(() => _firstName = newValue);
-                        },
-                      ),
-                      EditableField(
-                        key: ValueKey('lastName_$_lastName'),
-                        label: 'Last Name',
-                        initialValue: _lastName,
-                        onSave: (newValue, {currentPassword}) async {
-                          await ApiService().updateProfile(lastName: newValue);
-                          if (mounted) setState(() => _lastName = newValue);
-                        },
-                      ),
-                      EditableField(
-                        key: ValueKey('email_$_email'),
-                        label: 'Email',
-                        initialValue: _email,
-                        onSave: (newValue, {currentPassword}) async {
-                          if (!newValue.contains('@')) {
-                            throw Exception('Please enter a valid email address');
-                          }
-                          // Email doubles as the login credential now — no
-                          // separate username exists, so keep the backend's
-                          // Login field in sync with whatever the email
-                          // changes to, rather than letting them drift apart.
-                          await ApiService().updateProfile(email: newValue, login: newValue);
-                          if (mounted) setState(() => _email = newValue);
-                        },
-                      ),
-                      EditableField(
-                        label: 'Password',
-                        initialValue: '',
-                        obscureText: true,
-                        requireCurrentPassword: true,
-                        dotCount: _passwordLength,
-                        onSave: (newValue, {currentPassword}) async {
-                          if (newValue.length < 8) {
-                            throw Exception('Password must be at least 8 characters');
-                          }
-                          await ApiService().updatePassword(
-                            currentPassword: currentPassword ?? '',
-                            newPassword: newValue,
-                          );
-                          if (mounted) setState(() => _passwordLength = newValue.length);
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () => _confirmDelete(context),
-                          icon: const Icon(Icons.delete, color: AppColors.onDestructive),
-                          label: const Text('Delete Account', style: TextStyle(color: AppColors.onDestructive, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.destructive,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          ),
-                        ),
-                      ),
-                    ],
+                  EditableField(
+                    key: ValueKey('lastName_$_lastName'),
+                    label: 'Last Name',
+                    initialValue: _lastName,
+                    onSave: (newValue, {currentPassword}) async {
+                      await ApiService().updateAccount(
+                        firstName: _firstName,
+                        lastName: newValue,
+                        username: _username,
+                        email: _email,
+                      );
+                      if (mounted) setState(() => _lastName = newValue);
+                    },
                   ),
-                ),
-              ],
-            ),
-            Positioned(
-              left: 10,
-              top: 0,
-              child: GestureDetector(
-                onTap: _pickImage,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.black12,
-                      backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-                      child: _profileImage == null
-                          ? const Icon(Icons.person, size: 55, color: Colors.black54)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.edit, size: 16, color: Colors.black87),
+                  EditableField(
+                    key: ValueKey('username_$_username'),
+                    label: 'Username',
+                    initialValue: _username,
+                    onSave: (newValue, {currentPassword}) async {
+                      if (!RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(newValue)) {
+                        throw Exception('3-20 characters, letters/numbers/underscores only');
+                      }
+                      await ApiService().updateAccount(
+                        firstName: _firstName,
+                        lastName: _lastName,
+                        username: newValue,
+                        email: _email,
+                      );
+                      if (mounted) setState(() => _username = newValue);
+                    },
+                  ),
+                  EditableField(
+                    key: ValueKey('email_$_email'),
+                    label: 'Email',
+                    initialValue: _email,
+                    onSave: (newValue, {currentPassword}) async {
+                      if (!newValue.contains('@')) {
+                        throw Exception('Please enter a valid email address');
+                      }
+                      await ApiService().updateAccount(
+                        firstName: _firstName,
+                        lastName: _lastName,
+                        username: _username,
+                        email: newValue,
+                      );
+                      if (mounted) setState(() => _email = newValue);
+                    },
+                  ),
+                  EditableField(
+                    label: 'Password',
+                    initialValue: '',
+                    obscureText: true,
+                    requireCurrentPassword: true,
+                    dotCount: _passwordLength,
+                    onSave: (newValue, {currentPassword}) async {
+                      if (newValue.length < 8) {
+                        throw Exception('Password must be at least 8 characters');
+                      }
+                      await ApiService().updateAccount(
+                        firstName: _firstName,
+                        lastName: _lastName,
+                        username: _username,
+                        email: _email,
+                        currentPassword: currentPassword ?? '',
+                        password: newValue,
+                      );
+                      if (mounted) setState(() => _passwordLength = newValue.length);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Show on my reviews:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text('Full name ($_firstName $_lastName)'),
+                    value: 'fullName',
+                    groupValue: _reviewDisplayPreference,
+                    onChanged: (value) => _setReviewDisplayPreference(value!),
+                  ),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text('Username (@$_username)'),
+                    value: 'username',
+                    groupValue: _reviewDisplayPreference,
+                    onChanged: (value) => _setReviewDisplayPreference(value!),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _confirmDelete(context),
+                      icon: const Icon(Icons.delete, color: AppColors.onDestructive),
+                      label: const Text('Delete Account', style: TextStyle(color: AppColors.onDestructive, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.destructive,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],

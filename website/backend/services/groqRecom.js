@@ -1,8 +1,8 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const Groq = require("groq-sdk");
 
 const { getDB } = require("../db");
+const { requireAuth } = require("../middleware/requireAuth");
 
 const router = express.Router();
 
@@ -13,29 +13,6 @@ const sessions = {};
 
 const MAX_HISTORY_MESSAGES = 40; // stored
 const MAX_CONTEXT_MESSAGES = 20; // sent to Groq per request
-
-function requireAuth(req, res, next) {
-  const token = req.cookies.pv_auth;
-
-  if (!token) {
-    return res.status(401).json({
-      message: "Authentication required.",
-    });
-  }
-
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ["HS256"],
-    });
-
-    req.userId = payload.sub;
-    next();
-  } catch {
-    return res.status(401).json({
-      message: "Your login session is invalid or expired.",
-    });
-  }
-}
 
 function getSession(userId) {
   if (!sessions[userId]) {
@@ -80,6 +57,7 @@ async function getRatingStats(mediaId, mediaType) {
     const [stats] = await db.collection("users").aggregate(pipeline).toArray();
 
     return {
+      // Ratings are stored 1-10 directly now — no conversion needed.
       rating: stats ? Number(stats.avg.toFixed(1)) : null,
       ratingCount: stats ? stats.count : 0,
     };
@@ -103,7 +81,7 @@ async function enrichRecommendation(item) {
       if (!result) return { ...item, poster: null };
 
       const mediaId = `movie-${result.id}`;
-      const { rating, ratingCount } = await getRatingStats(mediaId, "movie");
+      const { rating: userScore, ratingCount: userScoreCount } = await getRatingStats(mediaId, "movie");
 
       return {
         ...item,
@@ -112,8 +90,9 @@ async function enrichRecommendation(item) {
           ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
           : null,
         overview: result.overview,
-        rating,
-        ratingCount,
+        score: result.vote_average ? Number(result.vote_average.toFixed(1)) : null,
+        userScore,
+        userScoreCount,
         releaseDate: result.release_date,
       };
     }
@@ -130,7 +109,7 @@ async function enrichRecommendation(item) {
       if (!result) return { ...item, poster: null };
 
       const mediaId = `show-${result.id}`;
-      const { rating, ratingCount } = await getRatingStats(mediaId, "show");
+      const { rating: userScore, ratingCount: userScoreCount } = await getRatingStats(mediaId, "show");
 
       return {
         ...item,
@@ -139,8 +118,9 @@ async function enrichRecommendation(item) {
           ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
           : null,
         overview: result.overview,
-        rating,
-        ratingCount,
+        score: result.vote_average ? Number(result.vote_average.toFixed(1)) : null,
+        userScore,
+        userScoreCount,
         releaseDate: result.first_air_date,
       };
     }
@@ -157,15 +137,18 @@ async function enrichRecommendation(item) {
       if (!result) return { ...item, poster: null };
 
       const mediaId = `game-${result.id}`;
-      const { rating, ratingCount } = await getRatingStats(mediaId, "game");
+      const { rating: userScore, ratingCount: userScoreCount } = await getRatingStats(mediaId, "game");
 
       return {
         ...item,
         id: mediaId,
         poster: result.background_image || null,
         overview: result.description_raw || null,
-        rating,
-        ratingCount,
+        // Doubled to match every other type's 0-10 scale — RAWG is
+        // native 0-5, same conversion as everywhere else in the app.
+        score: result.rating ? Number((result.rating * 2).toFixed(1)) : null,
+        userScore,
+        userScoreCount,
         releaseDate: result.released,
       };
     }
@@ -180,15 +163,18 @@ async function enrichRecommendation(item) {
       if (!result) return { ...item, poster: null };
 
       const mediaId = `music-${result.id}`;
-      const { rating, ratingCount } = await getRatingStats(mediaId, "music");
+      const { rating: userScore, ratingCount: userScoreCount } = await getRatingStats(mediaId, "music");
 
       return {
         ...item,
         id: mediaId,
         poster: result.album?.cover_big || null,
         overview: `By ${result.artist?.name} — ${result.album?.title}`,
-        rating,
-        ratingCount,
+        // Deezer has no rating concept at all — same as everywhere else
+        // music shows up in the app, there's no external score for it.
+        score: null,
+        userScore,
+        userScoreCount,
         releaseDate: null,
         preview: result.preview,
       };
@@ -227,7 +213,7 @@ router.post("/chat", requireAuth, async (req, res) => {
     session.messages.push({ role: "user", text: message });
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-20b", // llama-3.3-70b-versatile was deprecated by Groq in June 2026 — this was silently failing
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...session.history.slice(-MAX_CONTEXT_MESSAGES),
@@ -241,7 +227,17 @@ router.post("/chat", requireAuth, async (req, res) => {
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     const rawRecommendations = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-    const conversational = text.replace(/\[[\s\S]*\]/, "").trim();
+    let conversational = text.replace(/\[[\s\S]*\]/, "").trim();
+
+    // The model sometimes returns *only* the JSON array with nothing
+    // else — without this, that leaves the person looking at a blank
+    // message with recommendations attached to nothing.
+    if (!conversational) {
+      conversational =
+        rawRecommendations.length > 0
+          ? "Here's what I'd recommend:"
+          : "I couldn't come up with a recommendation for that — try rephrasing?";
+    }
 
     const recommendations = await Promise.all(
       rawRecommendations.map(enrichRecommendation),

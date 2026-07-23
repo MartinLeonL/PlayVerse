@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/media_row.dart';
+import '../models/media_item.dart';
+import '../models/playlist.dart';
 import '../services/api_service.dart';
 import '../services/media_service.dart';
 
@@ -7,134 +8,173 @@ class PlaylistStore extends ChangeNotifier {
   static final PlaylistStore instance = PlaylistStore._internal();
   PlaylistStore._internal();
 
-  final Map<String, List<MediaItem>> playlists = {};
+  // A List, not a Map — playlists are identified by id, and the backend
+  // allows duplicate names (two different playlists can both be called
+  // "Favorites"), so a name-keyed structure can't represent that.
+  final List<Playlist> playlists = [];
+
+  Playlist? _findById(String playlistId) {
+    try {
+      return playlists.firstWhere((p) => p.id == playlistId);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> loadPlaylists() async {
-    final userId = await ApiService().getCurrentUserId();
-    if (userId == null) return;
+    final loggedIn = await ApiService().isLoggedIn();
+    if (!loggedIn) return;
 
     try {
-      final names = await ApiService().getPlaylistNames(userId: userId);
-      playlists.clear();
-      for (final name in names) {
-        playlists[name] = [];
+      final rawPlaylists = await ApiService().getCustomPlaylists();
+
+      // Gather every saved item across every playlist and hydrate them
+      // all in one batch, rather than one round-trip per playlist.
+      final allRefs = <Map<String, String>>[];
+      for (final raw in rawPlaylists) {
+        final items = List<Map<String, dynamic>>.from(raw['items'] ?? []);
+        for (final item in items) {
+          allRefs.add({
+            'mediaId': item['mediaId'] as String,
+            'mediaType': item['mediaType'] as String,
+          });
+        }
       }
 
-      final results = await ApiService().getRankedMedia(userId: userId);
+      final hydrated = await MediaService().hydrateItems(allRefs);
+      final hydratedById = {for (final item in hydrated) item.id: item};
 
-      final toHydrate = results
-          .where((item) => item['MediaId'] != null && item['PlaylistName'] != null)
-          .map((item) => {
-                'mediaId': item['MediaId'] as String,
-                'mediaType': (item['MediaType'] ?? 'movie') as String,
-              })
-          .toList();
+      playlists
+        ..clear()
+        ..addAll(rawPlaylists.map((raw) {
+          final rawItems = List<Map<String, dynamic>>.from(raw['items'] ?? []);
+          final mediaItems = rawItems
+              .map((item) => hydratedById[item['mediaId']])
+              .whereType<MediaItem>()
+              .toList();
 
-      final hydrated = await MediaService().hydrateMedia(toHydrate);
-      final hydratedById = {for (final item in hydrated) item.mediaId: item};
+          return Playlist(
+            id: raw['id'] as String,
+            name: raw['name'] as String,
+            items: mediaItems,
+          );
+        }));
 
-      for (var item in results) {
-        final playlistName = item['PlaylistName'] as String?;
-        final mediaId = item['MediaId'] as String?;
-        if (playlistName == null || mediaId == null) continue;
-
-        final mediaItem = hydratedById[mediaId] ??
-            MediaItem(
-              mediaId: mediaId,
-              mediaType: item['MediaType'] ?? 'movie',
-              title: item['Title'],
-              imageUrl: 'https://image.tmdb.org/t/p/w342/default.jpg',
-            );
-        playlists.putIfAbsent(playlistName, () => []).add(mediaItem);
-      }
       notifyListeners();
     } catch (e) {
       print('Failed to load playlists from API: $e');
     }
   }
 
-  Future<void> createPlaylist(String name) async {
+  /// Not optimistic — the backend generates the playlist's real id, and
+  /// every other operation needs that real id to work, so there's no
+  /// good way to show it locally before the id actually exists.
+  Future<Playlist?> createPlaylist(String name) async {
     final trimmed = name.trim();
-    if (trimmed.isEmpty || playlists.containsKey(trimmed)) return;
-
-    playlists[trimmed] = [];
-    notifyListeners();
-
-    final userId = await ApiService().getCurrentUserId();
-    if (userId == null) return; // guest/no-login — stays local-only
+    if (trimmed.isEmpty) return null;
 
     try {
-      await ApiService().createPlaylistBackend(userId: userId, playlistName: trimmed);
+      final raw = await ApiService().createCustomPlaylist(trimmed);
+      final playlist = Playlist(id: raw['id'] as String, name: raw['name'] as String);
+      playlists.add(playlist);
+      notifyListeners();
+      return playlist;
     } catch (e) {
-      print('Failed to create playlist on backend: $e');
-      playlists.remove(trimmed);
+      print('Failed to create playlist: $e');
+      return null;
+    }
+  }
+
+  Future<void> renamePlaylist(String playlistId, String newName) async {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return;
+
+    final playlist = _findById(playlistId);
+    if (playlist == null) return;
+
+    final previousName = playlist.name;
+    playlist.name = trimmed;
+    notifyListeners();
+
+    try {
+      await ApiService().renameCustomPlaylist(playlistId, trimmed);
+    } catch (e) {
+      print('Failed to rename playlist: $e');
+      playlist.name = previousName;
       notifyListeners();
     }
   }
 
-  Future<String?> addItemToPlaylist(String playlistName, MediaItem item) async {
-    final alreadyThere = playlists[playlistName]?.any((existing) => existing.mediaId == item.mediaId) ?? false;
-    if (alreadyThere) return 'Already in this playlist';
+  Future<void> deletePlaylist(String playlistId) async {
+    final index = playlists.indexWhere((p) => p.id == playlistId);
+    if (index == -1) return;
 
-    playlists.putIfAbsent(playlistName, () => []).add(item);
+    final removed = playlists.removeAt(index);
     notifyListeners();
 
-    final userId = await ApiService().getCurrentUserId();
-    if (userId == null) return null; // guest/no-login — stays local-only
+    try {
+      await ApiService().deleteCustomPlaylist(playlistId);
+    } catch (e) {
+      print('Failed to delete playlist on backend: $e');
+      playlists.insert(index, removed);
+      notifyListeners();
+    }
+  }
+
+  /// Returns null on success, or an error message (e.g. "already in
+  /// this playlist") if it wasn't added.
+  Future<String?> addItemToPlaylist(String playlistId, MediaItem item) async {
+    final playlist = _findById(playlistId);
+    if (playlist == null) return 'Playlist not found.';
+
+    final alreadyThere = playlist.items.any((existing) => existing.id == item.id);
+    if (alreadyThere) return 'Already in this playlist.';
+
+    playlist.items.add(item);
+    notifyListeners();
 
     try {
-      await ApiService().addMedia(
-        userId: userId,
-        mediaId: item.mediaId,
-        title: item.title,
-        mediaType: item.mediaType,
-        playlistName: playlistName,
+      final added = await ApiService().addItemToCustomPlaylist(
+        playlistId: playlistId,
+        mediaId: item.id,
+        mediaType: item.type,
       );
+
+      if (!added) {
+        // Backend says it was already there after all — keep the local
+        // state consistent with that rather than showing a duplicate.
+        playlist.items.removeWhere((existing) => existing.id == item.id);
+        notifyListeners();
+        return 'Already in this playlist.';
+      }
+
       return null;
     } catch (e) {
-      playlists[playlistName]?.removeWhere((existing) => existing.mediaId == item.mediaId);
+      playlist.items.removeWhere((existing) => existing.id == item.id);
       notifyListeners();
       return e.toString();
     }
   }
 
+  Future<void> removeItemFromPlaylist(String playlistId, MediaItem item) async {
+    final playlist = _findById(playlistId);
+    if (playlist == null) return;
 
-  Future<void> removeItemFromPlaylist(String playlistName, MediaItem item) async {
-    final removed = playlists[playlistName]?.firstWhere(
-      (existing) => existing.mediaId == item.mediaId,
-      orElse: () => item,
-    );
+    final removedIndex = playlist.items.indexWhere((existing) => existing.id == item.id);
+    if (removedIndex == -1) return;
 
-    playlists[playlistName]?.removeWhere((existing) => existing.mediaId == item.mediaId);
+    final removed = playlist.items.removeAt(removedIndex);
     notifyListeners();
 
-    final userId = await ApiService().getCurrentUserId();
-    if (userId == null) return;
-
     try {
-      await ApiService().removeMedia(userId: userId, mediaId: item.mediaId, playlistName: playlistName);
+      await ApiService().removeItemFromCustomPlaylist(
+        playlistId: playlistId,
+        mediaId: item.id,
+        mediaType: item.type,
+      );
     } catch (e) {
       print('Failed to remove from backend: $e');
-      if (removed != null) {
-        playlists.putIfAbsent(playlistName, () => []).add(removed);
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> deletePlaylist(String name) async {
-    final removedItems = playlists[name];
-    playlists.remove(name);
-    notifyListeners();
-
-    final userId = await ApiService().getCurrentUserId();
-    if (userId == null) return;
-
-    try {
-      await ApiService().deletePlaylistBackend(userId: userId, playlistName: name);
-    } catch (e) {
-      print('Failed to delete playlist on backend: $e');
-      playlists[name] = removedItems ?? [];
+      playlist.items.insert(removedIndex, removed);
       notifyListeners();
     }
   }

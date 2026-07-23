@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../contexts/ToastContext.jsx";
 import { Pencil, Trash2 } from "lucide-react";
 
 import Navbar from "../components/Navbar.jsx";
@@ -16,6 +17,7 @@ function initials(first = "", last = "") {
 
 function Account() {
   const navigate = useNavigate();
+  const showToast = useToast();
 
   const [user, setUser] = useState(null);
 
@@ -85,7 +87,7 @@ function Account() {
       setEditOpen(false);
 
       if (data.requiresEmailVerification) {
-        window.alert(data.message);
+        showToast(data.message);
 
         navigate("/", {
           replace: true,
@@ -167,15 +169,21 @@ function Account() {
               </div>
 
               <div className="account-field">
-                <span className="account-label">Email</span>
-
-                <span className="account-value">{user.email}</span>
-              </div>
-
-              <div className="account-field">
                 <span className="account-label">Last Name</span>
 
                 <span className="account-value">{user.lastName}</span>
+              </div>
+
+              <div className="account-field">
+                <span className="account-label">Username</span>
+
+                <span className="account-value">{user.username}</span>
+              </div>
+
+              <div className="account-field">
+                <span className="account-label">Email</span>
+
+                <span className="account-value">{user.email}</span>
               </div>
             </div>
           </div>

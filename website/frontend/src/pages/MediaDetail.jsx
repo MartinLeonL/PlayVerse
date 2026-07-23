@@ -18,7 +18,8 @@ import Navbar from "../components/Navbar.jsx";
 import RatingModal from "../components/RatingModal.jsx";
 import TrailerModal from "../components/TrailerModal.jsx";
 import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
-import { fetchMediaItem, parseMediaId } from "../utils/api.js";
+import { fetchMediaItem, fetchReviews, parseMediaId } from "../utils/api.js";
+import { formatScore } from "../utils/format.js";
 import "./MediaDetail.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -100,6 +101,9 @@ function MediaDetail() {
   const [modalOpen, setModalOpen] = useState(false);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const trailerVideoKey = getYouTubeVideoKey(item);
 
   const musicPreviewUrl = item?.type === "music" ? item.previewUrl || "" : "";
@@ -178,6 +182,24 @@ function MediaDetail() {
     loadRating();
   }, [item, navigate]);
 
+  async function loadReviews() {
+    if (!item) return;
+    try {
+      setReviewsLoading(true);
+      const data = await fetchReviews(item.id, item.type);
+      setReviews(data.reviews || []);
+    } catch (error) {
+      console.error("Failed to load reviews:", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item]);
+
   if (itemLoading) {
     return (
       <div className="home-page">
@@ -249,6 +271,7 @@ function MediaDetail() {
       setRating(data.rating.score);
       setRatingNote(data.rating.note || "");
       setModalOpen(false);
+      loadReviews();
     } catch (error) {
       setRatingError(error.message);
     } finally {
@@ -368,7 +391,7 @@ function MediaDetail() {
               <div className="detail-score-value">
                 <Star size={18} fill={rating ? "currentColor" : "none"} />
 
-                {ratingLoading ? "Loading..." : `${rating || "--"}/5`}
+                {ratingLoading ? "Loading..." : `${rating || "--"}/10`}
               </div>
 
               {ratingNote && <p className="detail-score-note">{ratingNote}</p>}
@@ -378,8 +401,30 @@ function MediaDetail() {
               )}
             </div>
 
+            <div className="detail-score">
+              <div className="detail-score-head">
+                <span>Scores</span>
+              </div>
+
+              <div className="detail-score-value" style={{ color: "#facc15" }}>
+                <Star size={18} fill="currentColor" />
+                {item.score != null ? `${formatScore(item.score)}/10` : "N/A"}
+              </div>
+
+              <div className="detail-score-value" style={{ color: "#60a5fa", fontSize: 15, marginTop: 6 }}>
+                <Star size={16} fill="currentColor" />
+                {item.userScore != null ? `${formatScore(item.userScore)}/10` : "N/A"}
+              </div>
+            </div>
+
             <div className="detail-watch">
-              <span>How To Watch</span>
+              <span>
+                {item.type === "game"
+                  ? "Where to Play"
+                  : item.type === "music"
+                    ? "Where to Listen"
+                    : "Where to Watch"}
+              </span>
               <div className="provider-row">
                 {(item.providers || []).length === 0 && (
                   <span style={{ fontSize: 12, opacity: 0.7 }}>
@@ -437,6 +482,37 @@ function MediaDetail() {
               <span>{item.date}</span>
             </div>
           </div>
+        </section>
+
+        <section className="detail-reviews">
+          <h3>Reviews{reviews.length > 0 ? ` (${reviews.length})` : ""}</h3>
+
+          {reviewsLoading ? (
+            <p className="category-empty">Loading reviews...</p>
+          ) : reviews.length === 0 ? (
+            <p className="detail-reviews-empty">
+              No reviews yet — be the first to leave one.
+            </p>
+          ) : (
+            <div className="detail-reviews-list">
+              {reviews.map((review, index) => (
+                <div className="detail-review-card" key={index}>
+                  <div className="detail-review-head">
+                    <span className="detail-review-name">
+                      {review.displayName}
+                    </span>
+                    <span className="detail-review-score">
+                      <Star size={14} fill="currentColor" />
+                      {review.score}/10
+                    </span>
+                  </div>
+                  {review.note && (
+                    <p className="detail-review-note">{review.note}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </main>
 

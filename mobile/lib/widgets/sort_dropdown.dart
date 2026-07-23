@@ -1,13 +1,55 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-enum SortOption { recent, aToZ, zToA, trending, highestRated, lowestRated }
+enum SortOption {
+  recent,
+  aToZ,
+  zToA,
+  trending,
+  highestRated,
+  lowestRated,
+  userScoreAsc,
+  userScoreDesc,
+}
+
+/// Maps a SortOption to the string the backend's ?sort= query param
+/// expects (or null for "trending" — the default, no sort param sent
+/// at all).
+String? sortOptionToQueryValue(SortOption option) {
+  switch (option) {
+    case SortOption.aToZ:
+      return 'az';
+    case SortOption.zToA:
+      return 'za';
+    case SortOption.recent:
+      return 'recent';
+    case SortOption.highestRated:
+      return 'highest';
+    case SortOption.lowestRated:
+      return 'lowest';
+    case SortOption.userScoreAsc:
+      return 'userScoreAsc';
+    case SortOption.userScoreDesc:
+      return 'userScoreDesc';
+    case SortOption.trending:
+      return null;
+  }
+}
 
 class SortDropdown extends StatefulWidget {
   final SortOption selected;
   final ValueChanged<SortOption> onSelected;
+  // Music has no external rating at all (Deezer doesn't track one), so
+  // Highest/Lowest Rated are hidden specifically for it — the user-score
+  // options still apply everywhere, since that's PlayVerse's own data.
+  final String? mediaType;
 
-  const SortDropdown({super.key, required this.selected, required this.onSelected});
+  const SortDropdown({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+    this.mediaType,
+  });
 
   @override
   State<SortDropdown> createState() => _SortDropdownState();
@@ -16,14 +58,25 @@ class SortDropdown extends StatefulWidget {
 class _SortDropdownState extends State<SortDropdown> {
   bool _open = false;
 
-  final Map<SortOption, String> _labels = {
+  static const Map<SortOption, String> _allLabels = {
     SortOption.recent: 'Recent',
     SortOption.aToZ: 'A - Z',
     SortOption.zToA: 'Z - A',
     SortOption.trending: 'Trending',
     SortOption.highestRated: 'Highest Ratings',
     SortOption.lowestRated: 'Lowest Ratings',
+    SortOption.userScoreDesc: 'Highest User Score',
+    SortOption.userScoreAsc: 'Lowest User Score',
   };
+
+  Map<SortOption, String> get _labels {
+    if (widget.mediaType != 'music') return _allLabels;
+    return Map.fromEntries(
+      _allLabels.entries.where(
+        (entry) => entry.key != SortOption.highestRated && entry.key != SortOption.lowestRated,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

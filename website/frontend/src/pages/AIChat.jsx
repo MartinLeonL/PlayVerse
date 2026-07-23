@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import Navbar from "../components/Navbar.jsx";
+import { formatScore } from "../utils/format.js";
 import "./AIChat.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -57,10 +58,16 @@ function RecommendationCard({ item, onOpen }) {
         <span className="ai-rec-tag">{meta.label}</span>
         <p className="ai-rec-title">{item.title}</p>
         {item.year && <span className="ai-rec-year">{item.year}</span>}
-        {item.rating != null && (
-          <span className="ai-rec-rating">
+        {item.score != null && (
+          <span className="ai-rec-rating ai-rec-rating-external">
             <Star size={12} fill="currentColor" />
-            {item.rating.toFixed(1)} ({item.ratingCount})
+            {formatScore(item.score)}/10
+          </span>
+        )}
+        {item.userScore != null && (
+          <span className="ai-rec-rating ai-rec-rating-user">
+            <Star size={12} fill="currentColor" />
+            {formatScore(item.userScore)}/10
           </span>
         )}
         {item.reason && <p className="ai-rec-reason">{item.reason}</p>}

@@ -99,6 +99,27 @@
   flex-shrink: 0;
 }
 
+.account-modal-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-modal-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pv-text);
+  cursor: pointer;
+}
+
+.account-modal-radio-option input {
+  width: auto;
+  accent-color: var(--pv-purple-strong);
+}
+
 .account-modal-error {
   color: #d33;
   font-size: 13px;

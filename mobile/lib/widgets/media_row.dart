@@ -1,41 +1,10 @@
 import 'package:flutter/material.dart';
+import '../models/media_item.dart';
 import '../pages/all_media_page.dart';
 import '../pages/media_detail_page.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
-
-class MediaItem {
-  final String mediaId;
-  final String mediaType; // 'movie' | 'show' | 'game' | 'music'
-  final String title;
-  final String imageUrl;
-  final String bannerUrl;
-  final List<String> genres;
-  final String description;
-  final String runtime;
-  final String language;
-  final String releaseDate;
-  final List<String> platforms;
-  final double? averageRating;
-  final int ratingCount;
-
-  MediaItem({
-    String? mediaId,
-    this.mediaType = 'movie',
-    required this.title,
-    required this.imageUrl,
-    String? bannerUrl,
-    this.genres = const [],
-    this.description = 'No description available yet.',
-    this.runtime = '--',
-    this.language = '--',
-    this.releaseDate = '--',
-    this.platforms = const [],
-    this.averageRating,
-    this.ratingCount = 0,
-  })  : mediaId = mediaId ?? title,   // falls back to title if not given
-        bannerUrl = bannerUrl ?? imageUrl;
-}
+import '../utils/format_score.dart';
 
 class MediaRow extends StatelessWidget {
   final String categoryTitle;
@@ -43,6 +12,10 @@ class MediaRow extends StatelessWidget {
   final bool loop;
   final bool titleOpensAll;
   final bool isPlaylist;
+  // Only meaningful when isPlaylist is true — identifies which playlist
+  // this row belongs to, since playlists are looked up by id, not name
+  // (the backend allows duplicate names).
+  final String? playlistId;
   final VoidCallback? onDelete;
 
   const MediaRow({
@@ -52,6 +25,7 @@ class MediaRow extends StatelessWidget {
     this.loop = true,
     this.titleOpensAll = false,
     this.isPlaylist = false,
+    this.playlistId,
     this.onDelete,
   });
 
@@ -79,9 +53,8 @@ class MediaRow extends StatelessWidget {
                                 title: categoryTitle,
                                 items: items,
                                 isPlaylist: isPlaylist,
-                                mediaType: isPlaylist
-                                    ? null
-                                    : (categoryTitle == 'Music' ? 'music' : (items.isNotEmpty ? items.first.mediaType : null)),
+                                playlistId: playlistId,
+                                mediaType: isPlaylist ? null : (items.isNotEmpty ? items.first.type : null),
                               ),
                             ),
                           );
@@ -123,7 +96,7 @@ class MediaRow extends StatelessWidget {
                         width: cardWidth,
                         height: cardHeight,
                         isPlaylist: isPlaylist,
-                        playlistName: isPlaylist ? categoryTitle : null,
+                        playlistId: isPlaylist ? playlistId : null,
                       ),
                     );
                   },
@@ -137,14 +110,14 @@ class MediaRow extends StatelessWidget {
 
 /// Shared poster card used by both MediaRow (horizontal rows) and
 /// AllMediaPage (full grid) — kept in one place so rating badges, the
-/// long-press menu, and add/remove-from-playlist logic don't drift
-/// out of sync between the two views.
+/// long-press menu, and add/remove-from-playlist logic don't drift out
+/// of sync between the two views.
 class MediaCard extends StatefulWidget {
   final MediaItem item;
   final double width;
   final double height;
   final bool isPlaylist;
-  final String? playlistName;
+  final String? playlistId;
 
   const MediaCard({
     super.key,
@@ -152,7 +125,7 @@ class MediaCard extends StatefulWidget {
     required this.width,
     required this.height,
     this.isPlaylist = false,
-    this.playlistName,
+    this.playlistId,
   });
 
   @override
@@ -164,12 +137,21 @@ class _MediaCardState extends State<MediaCard> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
+  String? get _currentPlaylistName {
+    if (widget.playlistId == null) return null;
+    try {
+      return PlaylistStore.instance.playlists.firstWhere((p) => p.id == widget.playlistId).name;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _showOptionsMenu(BuildContext context) {
     final item = widget.item;
     final store = PlaylistStore.instance;
     // When shown inside a playlist, don't offer to "add" it to the very
     // same playlist it's already in.
-    final addablePlaylists = store.playlists.keys.where((name) => name != widget.playlistName).toList();
+    final addablePlaylists = store.playlists.where((p) => p.id != widget.playlistId).toList();
 
     showModalBottomSheet(
       context: context,
@@ -217,7 +199,7 @@ class _MediaCardState extends State<MediaCard> {
                     );
                   },
                 ),
-                if (widget.isPlaylist && widget.playlistName != null)
+                if (widget.isPlaylist && widget.playlistId != null)
                   _menuTile(
                     context,
                     icon: Icons.playlist_remove,
@@ -239,11 +221,12 @@ class _MediaCardState extends State<MediaCard> {
   }
 
   void _confirmRemove(BuildContext context) {
+    final playlistName = _currentPlaylistName ?? 'this playlist';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove from Playlist?'),
-        content: Text('Remove "${widget.item.title}" from "${widget.playlistName}"?'),
+        content: Text('Remove "${widget.item.title}" from "$playlistName"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -252,10 +235,10 @@ class _MediaCardState extends State<MediaCard> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await PlaylistStore.instance.removeItemFromPlaylist(widget.playlistName!, widget.item);
+              await PlaylistStore.instance.removeItemFromPlaylist(widget.playlistId!, widget.item);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Removed "${widget.item.title}" from ${widget.playlistName}')),
+                  SnackBar(content: Text('Removed "${widget.item.title}" from $playlistName')),
                 );
               }
             },
@@ -266,10 +249,8 @@ class _MediaCardState extends State<MediaCard> {
     );
   }
 
-  /// Adds this item to the user's playlist — appears instantly, syncs
-  /// to the backend in the background (see PlaylistStore.addItemToPlaylist).
-  Future<void> _persistAddToPlaylist(BuildContext context, String playlistName) async {
-    final error = await PlaylistStore.instance.addItemToPlaylist(playlistName, widget.item);
+  Future<void> _persistAddToPlaylist(BuildContext context, String playlistId, String playlistName) async {
+    final error = await PlaylistStore.instance.addItemToPlaylist(playlistId, widget.item);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error == null ? 'Added "${widget.item.title}" to $playlistName' : 'Failed to add: $error')),
@@ -277,7 +258,7 @@ class _MediaCardState extends State<MediaCard> {
     }
   }
 
-  void _showPlaylistPicker(BuildContext context, List<String> addablePlaylists) {
+  void _showPlaylistPicker(BuildContext context, List<dynamic> addablePlaylists) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -312,14 +293,14 @@ class _MediaCardState extends State<MediaCard> {
                             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             child: Text('No other playlists yet.', style: TextStyle(color: AppColors.textSecondary)),
                           ),
-                        ...addablePlaylists.map((playlistName) {
+                        ...addablePlaylists.map((playlist) {
                           return _menuTile(
                             context,
                             icon: Icons.playlist_play,
-                            label: playlistName,
+                            label: playlist.name,
                             onTap: () {
                               Navigator.pop(context);
-                              _persistAddToPlaylist(context, playlistName);
+                              _persistAddToPlaylist(context, playlist.id, playlist.name);
                             },
                           );
                         }),
@@ -367,9 +348,16 @@ class _MediaCardState extends State<MediaCard> {
               Navigator.pop(context);
               if (name.isEmpty) return;
 
-              final store = PlaylistStore.instance;
-              await store.createPlaylist(name);
-              await _persistAddToPlaylist(dialogContext, name);
+              final playlist = await PlaylistStore.instance.createPlaylist(name);
+              if (playlist == null) {
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Failed to create playlist.')),
+                  );
+                }
+                return;
+              }
+              await _persistAddToPlaylist(dialogContext, playlist.id, playlist.name);
             },
             child: const Text('Create'),
           ),
@@ -395,15 +383,15 @@ class _MediaCardState extends State<MediaCard> {
   }
 
   Widget _buildPoster() {
-    final isMusic = widget.item.mediaType == 'music';
-    final artistName = isMusic && widget.item.genres.isNotEmpty ? widget.item.genres.first : null;
+    final isMusic = widget.item.type == 'music';
+    final artistName = isMusic ? widget.item.artist : null;
 
     return Stack(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.network(
-            widget.item.imageUrl,
+            widget.item.posterImage,
             height: widget.height,
             width: widget.width,
             fit: BoxFit.cover,
@@ -415,9 +403,41 @@ class _MediaCardState extends State<MediaCard> {
             ),
           ),
         ),
-        if (artistName != null)
+        // PlayVerse's own community average — distinct from the
+        // external score on the other corner, shown for every type
+        // including music (which has no external score at all).
+        // In playlist view, badges sit at the bottom instead of the
+        // top, since the long-press "remove" option effectively lives
+        // in that top corner conceptually — kept consistent with web,
+        // where a persistent remove button actually sits there.
+        if (widget.item.userScore != null)
           Positioned(
-            top: 6,
+            top: widget.isPlaylist ? null : 6,
+            bottom: widget.isPlaylist ? 6 : null,
+            left: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star, color: Colors.blueAccent, size: 12),
+                  const SizedBox(width: 2),
+                  Text(
+                    formatScore(widget.item.userScore!),
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (artistName != null && artistName.isNotEmpty)
+          Positioned(
+            top: widget.isPlaylist ? null : 6,
+            bottom: widget.isPlaylist ? 6 : null,
             right: 6,
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: widget.width - 12),
@@ -436,9 +456,10 @@ class _MediaCardState extends State<MediaCard> {
               ),
             ),
           )
-        else if (widget.item.averageRating != null)
+        else if (widget.item.score != null)
           Positioned(
-            top: 6,
+            top: widget.isPlaylist ? null : 6,
+            bottom: widget.isPlaylist ? 6 : null,
             right: 6,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -452,7 +473,7 @@ class _MediaCardState extends State<MediaCard> {
                   const Icon(Icons.star, color: AppColors.accent, size: 12),
                   const SizedBox(width: 2),
                   Text(
-                    widget.item.averageRating!.toStringAsFixed(1),
+                    formatScore(widget.item.score!),
                     style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ],

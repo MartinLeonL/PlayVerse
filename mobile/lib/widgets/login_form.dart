@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
+import '../services/playlist_store.dart';
 import '../pages/home_page.dart';
 
 class LoginForm extends StatefulWidget {
@@ -30,9 +31,14 @@ class _LoginFormState extends State<LoginForm> {
     setState(() => _isLoading = true);
     try {
       await ApiService().login(
-        login: _emailController.text.trim(),
+        email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      // Load this account's playlists right away so they're ready by
+      // the time Home finishes building, rather than waiting on Home's
+      // own startup fetch alone.
+      await PlaylistStore.instance.loadPlaylists();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login successful!')));
@@ -82,11 +88,11 @@ class _LoginFormState extends State<LoginForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Enter your email or username and we\'ll send you a reset link.'),
+            const Text('Enter your email and we\'ll send you a reset link.'),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
-              decoration: _fieldDecoration('Email or username', Icons.email_outlined),
+              decoration: _fieldDecoration('Email', Icons.email_outlined),
             ),
           ],
         ),
@@ -97,12 +103,12 @@ class _LoginFormState extends State<LoginForm> {
           ),
           TextButton(
             onPressed: () async {
-              final login = controller.text.trim();
+              final email = controller.text.trim();
               Navigator.pop(dialogContext);
-              if (login.isEmpty) return;
+              if (email.isEmpty) return;
 
               try {
-                final message = await ApiService().forgotPassword(login);
+                final message = await ApiService().forgotPassword(email);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
                 }
@@ -128,11 +134,11 @@ class _LoginFormState extends State<LoginForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Email', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text('Email or Username', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
           controller: _emailController,
-          decoration: _fieldDecoration('Enter your email', Icons.email_outlined),
+          decoration: _fieldDecoration('Enter your email or username', Icons.person_outline),
         ),
         const SizedBox(height: 16),
         const Text('Password', style: TextStyle(fontWeight: FontWeight.w600)),

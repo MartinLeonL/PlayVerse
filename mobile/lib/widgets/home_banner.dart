@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../data/media_catalog.dart';
+import '../models/media_item.dart';
 import '../pages/media_detail_page.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
-import 'media_row.dart';
 
 class HomeBanner extends StatefulWidget {
   const HomeBanner({super.key});
@@ -46,7 +46,12 @@ class _HomeBannerState extends State<HomeBanner> {
             onPageChanged: (index) => setState(() => _currentPage = index),
             itemBuilder: (context, index) {
               final item = banners[index];
-              final tagLabel = item.mediaType == 'show' ? 'Show' : 'Movie';
+              final tagLabel = item.type == 'show' ? 'Show' : 'Movie';
+              // backdropImage can be null (music never has one, and
+              // some movies/shows lack a backdrop) — fall back to the
+              // poster rather than showing nothing.
+              final bannerImage = item.backdropImage ?? item.posterImage;
+
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: ClipRRect(
@@ -55,7 +60,7 @@ class _HomeBannerState extends State<HomeBanner> {
                     children: [
                       Positioned.fill(
                         child: Image.network(
-                          item.bannerUrl,
+                          bannerImage,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[800]),
                         ),
@@ -172,21 +177,29 @@ class _HomeBannerState extends State<HomeBanner> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ...store.playlists.keys.map((playlistName) {
+                        ...store.playlists.map((playlist) {
                           return ListTile(
                             leading: const Icon(Icons.playlist_play, color: AppColors.primary),
-                            title: Text(playlistName),
+                            title: Text(playlist.name),
                             onTap: () async {
-                              final error = await PlaylistStore.instance.addItemToPlaylist(playlistName, item);
+                              final error = await PlaylistStore.instance.addItemToPlaylist(playlist.id, item);
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(error == null ? 'Added "${item.title}" to $playlistName' : 'Failed to add: $error')),
+                                  SnackBar(content: Text(error == null ? 'Added "${item.title}" to ${playlist.name}' : 'Failed to add: $error')),
                                 );
                               }
                             },
                           );
                         }),
+                        ListTile(
+                          leading: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                          title: const Text('New Playlist'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showCreatePlaylistDialog(context, item);
+                          },
+                        ),
                         const SizedBox(height: 8),
                       ],
                     ),
@@ -197,6 +210,52 @@ class _HomeBannerState extends State<HomeBanner> {
           ),
         );
       },
+    );
+  }
+
+  void _showCreatePlaylistDialog(BuildContext context, MediaItem item) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('New Playlist'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Playlist name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              final dialogContext = context;
+              Navigator.pop(context);
+              if (name.isEmpty) return;
+
+              final playlist = await PlaylistStore.instance.createPlaylist(name);
+              if (playlist == null) {
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Failed to create playlist.')),
+                  );
+                }
+                return;
+              }
+
+              final error = await PlaylistStore.instance.addItemToPlaylist(playlist.id, item);
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(content: Text(error == null ? 'Added "${item.title}" to ${playlist.name}' : 'Failed to add: $error')),
+                );
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
     );
   }
 

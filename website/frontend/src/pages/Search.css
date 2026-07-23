@@ -134,6 +134,7 @@
 }
 
 .search-poster {
+  position: relative;
   width: 100%;
   aspect-ratio: 150 / 210;
   border-radius: 12px;
@@ -143,6 +144,37 @@
   padding: 12px;
   text-align: center;
 }
+
+.score-badge {
+  position: absolute;
+  top: 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.score-badge.score-badge-user {
+  left: 8px;
+  color: #60a5fa;
+}
+
+.score-badge.score-badge-external {
+  right: 8px;
+  color: #facc15;
+}
+.score-badge.score-badge-artist {
+  right: 8px;
+  color: #fff;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 
 .search-poster span {
   color: #fff;
@@ -157,9 +189,77 @@
   font-weight: 500;
 }
 
+.poster-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 8px 15px 0;
+}
+
+.poster-card-title-row p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--pv-text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.poster-card-add-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: var(--pv-purple-strong);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .search-empty {
   color: var(--pv-text-muted);
   font-size: 14px;
+}
+
+.search-add-mode-banner {
+  background: var(--pv-purple-strong);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.search-add-message {
+  color: #22c55e;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.search-add-error {
+  color: #ff9b9b;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.search-add-icon {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--pv-purple-strong);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { X, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 
 import "./AccountModal.css";
 
@@ -14,14 +14,19 @@ function EditAccountModal({
 
   const [lastName, setLastName] = useState(user.lastName || "");
 
+  const [username, setUsername] = useState(user.username || "");
+
   const [email, setEmail] = useState(user.email || "");
 
+  const [reviewDisplayPreference, setReviewDisplayPreference] = useState(
+    user.reviewDisplayPreference || "fullName",
+  );
+
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const [showConfirm, setShowConfirm] = useState(false);
 
   const [validationError, setValidationError] = useState("");
 
@@ -31,10 +36,25 @@ function EditAccountModal({
 
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
+    const trimmedUsername = username.trim();
     const trimmedEmail = email.trim();
 
-    if (!trimmedFirstName || !trimmedLastName || !trimmedEmail) {
-      setValidationError("First name, last name, and email are required.");
+    if (
+      !trimmedFirstName ||
+      !trimmedLastName ||
+      !trimmedUsername ||
+      !trimmedEmail
+    ) {
+      setValidationError(
+        "First name, last name, username, and email are required.",
+      );
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
+      setValidationError(
+        "Username must be 3-20 characters, letters/numbers/underscores only.",
+      );
       return;
     }
 
@@ -45,20 +65,23 @@ function EditAccountModal({
       return;
     }
 
-    if (password !== confirmPassword) {
-      setValidationError("Passwords do not match.");
+    if (password && !currentPassword) {
+      setValidationError("Enter your current password to set a new one.");
       return;
     }
 
     const updatedAccount = {
       firstName: trimmedFirstName,
       lastName: trimmedLastName,
+      username: trimmedUsername,
       email: trimmedEmail,
+      reviewDisplayPreference,
     };
 
-    // Only send a password when the user entered one.
+    // Only send password fields when the user actually entered one.
     if (password) {
       updatedAccount.password = password;
+      updatedAccount.currentPassword = currentPassword;
     }
 
     await onSave(updatedAccount);
@@ -116,6 +139,23 @@ function EditAccountModal({
           </div>
 
           <div className="account-modal-field full">
+            <label htmlFor="username">Username</label>
+
+            <div className="account-modal-input-icon">
+              <User size={15} />
+
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                disabled={saving}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="account-modal-field full">
             <label htmlFor="email">Email</label>
 
             <div className="account-modal-input-icon">
@@ -133,7 +173,72 @@ function EditAccountModal({
           </div>
 
           <div className="account-modal-field full">
-            <label htmlFor="newPassword">New Password (optional)</label>
+            <label>Show on my reviews</label>
+
+            <div className="account-modal-radio-group">
+              <label className="account-modal-radio-option">
+                <input
+                  type="radio"
+                  name="reviewDisplayPreference"
+                  value="fullName"
+                  checked={reviewDisplayPreference === "fullName"}
+                  onChange={() => setReviewDisplayPreference("fullName")}
+                  disabled={saving}
+                />
+                Full name ({firstName} {lastName})
+              </label>
+
+              <label className="account-modal-radio-option">
+                <input
+                  type="radio"
+                  name="reviewDisplayPreference"
+                  value="username"
+                  checked={reviewDisplayPreference === "username"}
+                  onChange={() => setReviewDisplayPreference("username")}
+                  disabled={saving}
+                />
+                Username (@{username})
+              </label>
+            </div>
+          </div>
+
+          <div className="account-modal-field full">
+            <label htmlFor="currentPassword">
+              Current Password (required to change password)
+            </label>
+
+            <div className="account-modal-input-icon">
+              <Lock size={15} />
+
+              <input
+                id="currentPassword"
+                type={showCurrentPassword ? "text" : "password"}
+                placeholder="Enter your current password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                disabled={saving}
+              />
+
+              <button
+                type="button"
+                className="account-modal-toggle"
+                onClick={() => setShowCurrentPassword((current) => !current)}
+                aria-label={
+                  showCurrentPassword ? "Hide password" : "Show password"
+                }
+                disabled={saving}
+              >
+                {showCurrentPassword ? (
+                  <EyeOff size={15} />
+                ) : (
+                  <Eye size={15} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="account-modal-field full">
+            <label htmlFor="newPassword">New Password</label>
 
             <div className="account-modal-input-icon">
               <Lock size={15} />
@@ -155,33 +260,6 @@ function EditAccountModal({
                 disabled={saving}
               >
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="account-modal-field full">
-            <label htmlFor="confirmPassword">Confirm New Password</label>
-
-            <div className="account-modal-input-icon">
-              <Lock size={15} />
-
-              <input
-                id="confirmPassword"
-                type={showConfirm ? "text" : "password"}
-                placeholder="Confirm your new password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                disabled={saving}
-              />
-
-              <button
-                type="button"
-                className="account-modal-toggle"
-                onClick={() => setShowConfirm((current) => !current)}
-                aria-label={showConfirm ? "Hide password" : "Show password"}
-                disabled={saving}
-              >
-                {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
           </div>

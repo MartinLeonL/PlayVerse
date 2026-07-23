@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../models/media_item.dart';
 import '../services/media_service.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_shell.dart';
+import '../widgets/genre_picker.dart';
 import '../widgets/media_row.dart';
 import '../widgets/sort_dropdown.dart';
 import 'search_page.dart';
@@ -12,6 +14,7 @@ class AllMediaPage extends StatefulWidget {
   final String title;
   final List<MediaItem> items;
   final bool isPlaylist;
+  final String? playlistId; // required when isPlaylist is true
   final String? mediaType; // when set (and not a playlist), this page fetches the full paginated catalog itself
 
   const AllMediaPage({
@@ -19,6 +22,7 @@ class AllMediaPage extends StatefulWidget {
     required this.title,
     required this.items,
     this.isPlaylist = false,
+    this.playlistId,
     this.mediaType,
   });
 
@@ -29,6 +33,9 @@ class AllMediaPage extends StatefulWidget {
 class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
   SortOption _sortOption = SortOption.trending;
 
+  List<Map<String, dynamic>> _genres = [];
+  dynamic _selectedGenreId; // null = "All Genres"
+
   final List<MediaItem> _catalogItems = [];
   int _page = 1;
   bool _isLoadingMore = false;
@@ -37,11 +44,29 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
 
   bool get _isBrowsingCatalog => !widget.isPlaylist && widget.mediaType != null;
 
+  // The genre endpoint uses plural category names, while mediaType
+  // elsewhere in the app is singular — small mapping between the two.
+  String get _pluralMediaType {
+    switch (widget.mediaType) {
+      case 'movie':
+        return 'movies';
+      case 'show':
+        return 'shows';
+      case 'game':
+        return 'games';
+      case 'music':
+        return 'music';
+      default:
+        return '';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     if (_isBrowsingCatalog) {
       _loadNextPage();
+      _loadGenres();
       _scrollController.addListener(_onScroll);
     }
   }
@@ -62,7 +87,6 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
     super.dispose();
   }
 
-
   @override
   void didPopNext() {
     setState(() {});
@@ -74,45 +98,39 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
     }
   }
 
-  String _sortParam(SortOption option) {
-    switch (option) {
-      case SortOption.aToZ:
-        return 'az';
-      case SortOption.zToA:
-        return 'za';
-      case SortOption.recent:
-        return 'recent';
-      case SortOption.highestRated:
-        return 'highest';
-      case SortOption.lowestRated:
-        return 'lowest';
-      case SortOption.trending:
-        return 'trending';
-    }
+  Future<void> _loadGenres() async {
+    final genres = await MediaService().getGenres(_pluralMediaType);
+    if (mounted) setState(() => _genres = genres);
+  }
+
+  void _resetAndReload() {
+    setState(() {
+      _catalogItems.clear();
+      _page = 1;
+      _hasMore = true;
+    });
+    _loadNextPage();
   }
 
   void _onSortChanged(SortOption option) {
     setState(() => _sortOption = option);
-    if (_isBrowsingCatalog) {
-      // Sort is applied server-side across the whole catalog, so a sort
-      // change means starting over from page 1
-      setState(() {
-        _catalogItems.clear();
-        _page = 1;
-        _hasMore = true;
-      });
-      _loadNextPage();
-    }
+    if (_isBrowsingCatalog) _resetAndReload();
+  }
+
+  void _onGenreChanged(dynamic genreId) {
+    setState(() => _selectedGenreId = genreId);
+    _resetAndReload();
   }
 
   Future<void> _loadNextPage() async {
     if (_isLoadingMore || !_hasMore) return;
     setState(() => _isLoadingMore = true);
 
-    final newItems = await MediaService().getAllByType(
+    final newItems = await MediaService().getByType(
       widget.mediaType!,
       page: _page,
-      sort: _sortParam(_sortOption),
+      sort: sortOptionToQueryValue(_sortOption),
+      genre: _selectedGenreId?.toString(),
     );
 
     if (mounted) {
@@ -128,6 +146,9 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
     }
   }
 
+  // Catalog browsing: already sorted server-side, use as-is.
+  // Playlists: small fixed list, sorted client-side using each item's
+  // own userScore field.
   List<MediaItem> get _displayItems {
     if (_isBrowsingCatalog) return _catalogItems;
 
@@ -140,13 +161,19 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
         list.sort((a, b) => b.title.compareTo(a.title));
         break;
       case SortOption.highestRated:
-        list.sort((a, b) => (b.averageRating ?? -1).compareTo(a.averageRating ?? -1));
+        list.sort((a, b) => (b.score ?? -1).compareTo(a.score ?? -1));
         break;
       case SortOption.lowestRated:
-        list.sort((a, b) => (a.averageRating ?? double.infinity).compareTo(b.averageRating ?? double.infinity));
+        list.sort((a, b) => (a.score ?? double.infinity).compareTo(b.score ?? double.infinity));
         break;
       case SortOption.recent:
-        list.sort((a, b) => b.releaseDate.compareTo(a.releaseDate));
+        list.sort((a, b) => b.date.compareTo(a.date));
+        break;
+      case SortOption.userScoreDesc:
+        list.sort((a, b) => (b.userScore ?? -1).compareTo(a.userScore ?? -1));
+        break;
+      case SortOption.userScoreAsc:
+        list.sort((a, b) => (a.userScore ?? double.infinity).compareTo(b.userScore ?? double.infinity));
         break;
       case SortOption.trending:
         break;
@@ -199,7 +226,10 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => SearchPage(targetPlaylistName: widget.title),
+                              builder: (context) => SearchPage(
+                                targetPlaylistId: widget.playlistId,
+                                targetPlaylistName: widget.title,
+                              ),
                             ),
                           );
                         },
@@ -236,9 +266,22 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
               ],
             ),
             const SizedBox(height: 12),
-            SortDropdown(
-              selected: _sortOption,
-              onSelected: _onSortChanged,
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                SortDropdown(
+                  selected: _sortOption,
+                  onSelected: _onSortChanged,
+                  mediaType: widget.mediaType,
+                ),
+                if (_isBrowsingCatalog)
+                  GenrePicker(
+                    genres: _genres,
+                    selectedGenreId: _selectedGenreId,
+                    onSelected: _onGenreChanged,
+                  ),
+              ],
             ),
             const SizedBox(height: 20),
             if (widget.isPlaylist)
@@ -258,7 +301,7 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
                   width: cardWidth,
                   height: cardHeight,
                   isPlaylist: widget.isPlaylist,
-                  playlistName: widget.isPlaylist ? widget.title : null,
+                  playlistId: widget.isPlaylist ? widget.playlistId : null,
                 );
               }).toList(),
             ),
@@ -286,7 +329,9 @@ class _AllMediaPageState extends State<AllMediaPage> with RouteAware {
           ),
           TextButton(
             onPressed: () {
-              PlaylistStore.instance.deletePlaylist(widget.title);
+              if (widget.playlistId != null) {
+                PlaylistStore.instance.deletePlaylist(widget.playlistId!);
+              }
               Navigator.pop(context);
               Navigator.pop(context);
             },
