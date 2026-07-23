@@ -68,7 +68,7 @@ function RatingModal({
 
         <form onSubmit={handleSubmit}>
           <div className="rating-stars" onMouseLeave={() => setHovered(0)}>
-            {[1, 2, 3, 4, 5].map((number) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((number) => (
               <button
                 key={number}
                 type="button"
@@ -90,14 +90,14 @@ function RatingModal({
 
           <div className="rating-note-field">
             <label htmlFor="rating-note">
-              Personal note <span>(optional)</span>
+              Review <span>(optional, visible to everyone)</span>
             </label>
 
             <textarea
               id="rating-note"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Why did you give it this score?"
+              placeholder="What did you think?"
               maxLength={500}
               rows={4}
               disabled={saving}
