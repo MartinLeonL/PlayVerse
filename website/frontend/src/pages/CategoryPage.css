@@ -25,6 +25,45 @@
   margin-bottom: 24px;
 }
 
+/* Filter bar — bordered pill container so the genre filter reads as a
+   distinct "filter" control at a glance, instead of loose buttons
+   floating in the page. */
+.category-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 16px 8px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 16px;
+  background: var(--pv-surface);
+}
+
+.category-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-surface);
+  flex-shrink: 0;
+}
+
+.category-filter-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pv-purple-strong);
+  flex-shrink: 0;
+}
+
 .category-genres {
   display: flex;
   flex-wrap: wrap;
@@ -33,18 +72,18 @@
 }
 
 .category-sort-select {
-  border: 1px solid var(--pv-border);
-  background: var(--pv-surface);
+  border: none;
+  background: transparent;
   color: var(--pv-text);
-  border-radius: 999px;
-  padding: 8px 18px;
   font-weight: 600;
   font-size: 13px;
+  padding: 4px 2px;
+  outline: none;
 }
 
 .genre-pill {
   border: 1px solid var(--pv-border);
-  background: var(--pv-surface);
+  background: var(--pv-bg);
   color: var(--pv-text-muted);
   border-radius: 999px;
   padding: 8px 18px;
@@ -159,4 +198,15 @@
 .category-empty {
   color: var(--pv-text-muted);
   font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .category-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .category-sort-bar {
+    justify-content: space-between;
+  }
 }

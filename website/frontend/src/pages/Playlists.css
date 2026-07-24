@@ -142,9 +142,39 @@
   color: var(--pv-text);
 }
 
+/* The whole title block (chevron + name + count) is a button that
+   collapses/expands this playlist's grid. Styled to look identical to
+   the plain heading it replaces, aside from the chevron and a pointer
+   cursor, so it doesn't look like a stray unstyled button. */
+.playlist-collapse-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+}
+
+.playlist-collapse-toggle > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--pv-purple-strong);
+}
+
+.playlist-collapse-toggle:hover h2 {
+  color: var(--pv-purple-strong);
+}
+
 .playlists-detail-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .playlist-hub-icon-btn {

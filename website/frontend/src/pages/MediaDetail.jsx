@@ -408,14 +408,37 @@ function MediaDetail() {
                 <span>Scores</span>
               </div>
 
-              <div className="detail-score-value" style={{ color: "#facc15" }}>
-                <Star size={18} fill="currentColor" />
-                {item.score != null ? `${formatScore(item.score)}/10` : "N/A"}
+              <div className="detail-score-row">
+                <span
+                  className="detail-score-source"
+                  style={{ color: "#facc15" }}
+                >
+                  {item.source ? `${item.source} Score` : "External Score"}
+                </span>
+
+                <div className="detail-score-value" style={{ color: "#facc15" }}>
+                  <Star size={18} fill="currentColor" />
+                  {item.score != null ? `${formatScore(item.score)}/10` : "N/A"}
+                </div>
               </div>
 
-              <div className="detail-score-value" style={{ color: "#60a5fa", fontSize: 15, marginTop: 6 }}>
-                <Star size={16} fill="currentColor" />
-                {item.userScore != null ? `${formatScore(item.userScore)}/10` : "N/A"}
+              <div className="detail-score-row detail-score-row-secondary">
+                <span
+                  className="detail-score-source"
+                  style={{ color: "#60a5fa" }}
+                >
+                  PlayVerse Community Score
+                </span>
+
+                <div
+                  className="detail-score-value"
+                  style={{ color: "#60a5fa", fontSize: 15 }}
+                >
+                  <Star size={16} fill="currentColor" />
+                  {item.userScore != null
+                    ? `${formatScore(item.userScore)}/10`
+                    : "N/A"}
+                </div>
               </div>
             </div>
 

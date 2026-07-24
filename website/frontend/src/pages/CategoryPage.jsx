@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Filter, ArrowUpDown } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
 import { CATEGORY_FETCHERS, fetchGenres } from "../utils/api.js";
@@ -154,38 +154,53 @@ function CategoryPage({ navKey, title }) {
         <p>Browse by genre to find something new.</p>
 
         <div className="category-controls">
-          <div className="category-genres">
-            <button
-              type="button"
-              className={activeGenre === "All" ? "genre-pill active" : "genre-pill"}
-              onClick={() => setActiveGenre("All")}
-            >
-              All
-            </button>
-            {genres.map((g) => (
+          <div className="category-filter-bar">
+            <span className="category-filter-icon">
+              <Filter size={14} />
+              Filter by Genre
+            </span>
+
+            <div className="category-genres">
               <button
-                key={g.id}
                 type="button"
-                className={activeGenre === String(g.id) ? "genre-pill active" : "genre-pill"}
-                onClick={() => setActiveGenre(String(g.id))}
+                className={activeGenre === "All" ? "genre-pill active" : "genre-pill"}
+                onClick={() => setActiveGenre("All")}
               >
-                {g.name}
+                All
               </button>
-            ))}
+              {genres.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={activeGenre === String(g.id) ? "genre-pill active" : "genre-pill"}
+                  onClick={() => setActiveGenre(String(g.id))}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <select
-            className="category-sort-select"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            aria-label="Sort by"
-          >
-            {sortOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <div className="category-sort-bar">
+            <label htmlFor="category-sort-select" className="category-filter-icon">
+              <ArrowUpDown size={14} />
+              Sort By
+            </label>
+
+            <select
+              id="category-sort-select"
+              className="category-sort-select"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              aria-label="Sort by"
+            >
+              {sortOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {loading ? (

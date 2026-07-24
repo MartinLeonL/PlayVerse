@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, Pencil, Trash2 } from "lucide-react";
+import { X, Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 
 import Navbar from "../components/Navbar.jsx";
 import { fetchMediaItem, parseMediaId } from "../utils/api.js";
@@ -68,6 +68,10 @@ function Playlists() {
   const [customError, setCustomError] = useState("");
   const [removingCustomKey, setRemovingCustomKey] = useState(null); // `${playlistId}:${itemId}`
 
+  // Playlist IDs whose grid is currently collapsed. Starts empty so
+  // every playlist opens expanded by default the first time it appears.
+  const [collapsedPlaylistIds, setCollapsedPlaylistIds] = useState(() => new Set());
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -128,6 +132,20 @@ function Playlists() {
 
   function openMedia(item) {
     navigate(`/media/${encodeURIComponent(item.id)}`);
+  }
+
+  function toggleCollapsed(playlistId) {
+    setCollapsedPlaylistIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(playlistId)) {
+        next.delete(playlistId);
+      } else {
+        next.add(playlistId);
+      }
+
+      return next;
+    });
   }
 
   // ---- Custom playlist actions ----
@@ -355,103 +373,122 @@ function Playlists() {
           </div>
         ) : (
           <div className="playlist-sections">
-            {customPlaylists.map((playlist) => (
-              <section className="playlist-hub-section" key={playlist.id}>
-                <div className="playlists-detail-head">
-                  <div>
-                    <h2>{playlist.name}</h2>
-                    <p className="playlist-hub-sub">
-                      {(playlist.resolvedItems || []).length} saved title
-                      {(playlist.resolvedItems || []).length === 1 ? "" : "s"}
-                    </p>
-                  </div>
+            {customPlaylists.map((playlist) => {
+              const isCollapsed = collapsedPlaylistIds.has(playlist.id);
+              const itemCount = (playlist.resolvedItems || []).length;
 
-                  <div className="playlists-detail-actions">
+              return (
+                <section className="playlist-hub-section" key={playlist.id}>
+                  <div className="playlists-detail-head">
                     <button
                       type="button"
-                      className="playlist-hub-icon-btn"
-                      onClick={() =>
-                        navigate(
-                          `/search?addTo=${encodeURIComponent(playlist.id)}&addToName=${encodeURIComponent(playlist.name)}`,
-                        )
+                      className="playlist-collapse-toggle"
+                      onClick={() => toggleCollapsed(playlist.id)}
+                      aria-expanded={!isCollapsed}
+                      aria-label={
+                        isCollapsed ? `Expand ${playlist.name}` : `Collapse ${playlist.name}`
                       }
-                      aria-label={`Add to ${playlist.name}`}
                     >
-                      <Plus size={14} />
-                    </button>
+                      {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
 
-                    <button
-                      type="button"
-                      className="playlist-hub-icon-btn"
-                      onClick={() => {
-                        setRenamingPlaylist(playlist);
-                        setRenameValue(playlist.name);
-                        setRenameError("");
-                      }}
-                      aria-label={`Rename ${playlist.name}`}
-                    >
-                      <Pencil size={14} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="playlist-hub-icon-btn danger"
-                      onClick={() => setDeletingPlaylist(playlist)}
-                      aria-label={`Delete ${playlist.name}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {(playlist.resolvedItems || []).length === 0 ? (
-                  <div className="playlists-empty">
-                    Nothing here yet. Open a title and use &quot;Add to Playlist&quot; to add it
-                    here.
-                  </div>
-                ) : (
-                  <div className="playlists-grid">
-                    {playlist.resolvedItems.map((item) => (
-                      <div className="playlist-card" key={item.id}>
-                        <button
-                          type="button"
-                          className="playlist-remove"
-                          onClick={() => handleRemoveFromCustomPlaylist(playlist.id, item)}
-                          disabled={removingCustomKey === `${playlist.id}:${item.id}`}
-                          aria-label={`Remove ${item.title} from ${playlist.name}`}
-                        >
-                          <X size={14} />
-                        </button>
-
-                        <div
-                          className="playlist-poster"
-                          onClick={() => openMedia(item)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") openMedia(item);
-                          }}
-                        >
-                          <img src={item.posterImage} alt={`${item.title} poster`} />
-                          {item.userScore != null && (
-                            <span className="score-badge score-badge-user">
-                              ★ {formatScore(item.userScore)}
-                            </span>
-                          )}
-                          {item.score != null && (
-                            <span className="score-badge score-badge-external">
-                              ★ {formatScore(item.score)}
-                            </span>
-                          )}
-                        </div>
-
-                        <p>{item.title}</p>
+                      <div>
+                        <h2>{playlist.name}</h2>
+                        <p className="playlist-hub-sub">
+                          {itemCount} saved title
+                          {itemCount === 1 ? "" : "s"}
+                        </p>
                       </div>
-                    ))}
+                    </button>
+
+                    <div className="playlists-detail-actions">
+                      <button
+                        type="button"
+                        className="playlist-hub-icon-btn"
+                        onClick={() =>
+                          navigate(
+                            `/search?addTo=${encodeURIComponent(playlist.id)}&addToName=${encodeURIComponent(playlist.name)}`,
+                          )
+                        }
+                        aria-label={`Add to ${playlist.name}`}
+                      >
+                        <Plus size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="playlist-hub-icon-btn"
+                        onClick={() => {
+                          setRenamingPlaylist(playlist);
+                          setRenameValue(playlist.name);
+                          setRenameError("");
+                        }}
+                        aria-label={`Rename ${playlist.name}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="playlist-hub-icon-btn danger"
+                        onClick={() => setDeletingPlaylist(playlist)}
+                        aria-label={`Delete ${playlist.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                )}
-              </section>
-            ))}
+
+                  {!isCollapsed && (
+                    itemCount === 0 ? (
+                      <div className="playlists-empty">
+                        Nothing here yet. Open a title and use &quot;Add to Playlist&quot; to add it
+                        here.
+                      </div>
+                    ) : (
+                      <div className="playlists-grid">
+                        {playlist.resolvedItems.map((item) => (
+                          <div className="playlist-card" key={item.id}>
+                            <button
+                              type="button"
+                              className="playlist-remove"
+                              onClick={() => handleRemoveFromCustomPlaylist(playlist.id, item)}
+                              disabled={removingCustomKey === `${playlist.id}:${item.id}`}
+                              aria-label={`Remove ${item.title} from ${playlist.name}`}
+                            >
+                              <X size={14} />
+                            </button>
+
+                            <div
+                              className="playlist-poster"
+                              onClick={() => openMedia(item)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") openMedia(item);
+                              }}
+                            >
+                              <img src={item.posterImage} alt={`${item.title} poster`} />
+                              {item.userScore != null && (
+                                <span className="score-badge score-badge-user">
+                                  ★ {formatScore(item.userScore)}
+                                </span>
+                              )}
+                              {item.score != null && (
+                                <span className="score-badge score-badge-external">
+                                  ★ {formatScore(item.score)}
+                                </span>
+                              )}
+                            </div>
+
+                            <p>{item.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
       </main>

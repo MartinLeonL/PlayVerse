@@ -179,6 +179,27 @@
   color: #facc15;
 }
 
+/* Labeled rows in the "Scores" box (external + community scores), so
+   it's clear at a glance which star represents which source — the
+   label sits right above/beside its matching colored star+value. */
+.detail-score-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-score-row-secondary {
+  margin-top: 10px;
+}
+
+.detail-score-source {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
 .detail-watch > span {
   display: block;
   font-size: 13px;
