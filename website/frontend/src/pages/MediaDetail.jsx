@@ -114,27 +114,28 @@ function MediaDetail() {
 
   const hasPlayableVideo = Boolean(trailerVideoKey || gameVideoUrl);
 
-  useEffect(() => {
-    async function loadItem() {
-      try {
+  async function loadItem({ showLoading = true } = {}) {
+    try {
+      if (showLoading) {
         setItemLoading(true);
-        setItemError("");
+      }
+      setItemError("");
 
-        const decodedId = decodeURIComponent(id ?? "");
-        const { type, sourceId } = parseMediaId(decodedId);
+      const decodedId = decodeURIComponent(id ?? "");
+      const { type, sourceId } = parseMediaId(decodedId);
 
-        const data = await fetchMediaItem(type, sourceId);
-        console.log("Fetched media item:", data.item);
-        console.log("Trailer key:", data.item?.trailerKey);
-        console.log("Preview URL:", data.item?.previewUrl);
-        setItem(data.item);
-      } catch (error) {
-        setItemError(error.message);
-      } finally {
+      const data = await fetchMediaItem(type, sourceId);
+      setItem(data.item);
+    } catch (error) {
+      setItemError(error.message);
+    } finally {
+      if (showLoading) {
         setItemLoading(false);
       }
     }
+  }
 
+  useEffect(() => {
     loadItem();
   }, [id]);
 
@@ -270,6 +271,7 @@ function MediaDetail() {
 
       setRating(data.rating.score);
       setRatingNote(data.rating.note || "");
+      await loadItem({ showLoading: false });
       setModalOpen(false);
       loadReviews();
     } catch (error) {
