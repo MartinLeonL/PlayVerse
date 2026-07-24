@@ -139,18 +139,34 @@ router.get("/games", async (req, res, next) => {
   }
 });
 
-// GET /api/media/music?genre=132  OR  ?sort=...&page=1
+// GET /api/media/music?genre=132&page=1  OR  ?sort=...&page=1
+//
+// Deezer's chart/genre endpoints don't support real page-based
+// pagination the way TMDB/RAWG do (getChartTracks/getTracksByGenre just
+// return a fixed batch), so — like the sort=... path above — this pulls
+// from the shared cached pool for "music" and slices out the requested
+// page itself. That's what makes `totalPages` accurate and lets the
+// frontend's infinite scroll on the Music page keep loading more pages,
+// the same way it already does for Movies/Shows/Games.
 router.get("/music", async (req, res, next) => {
   try {
     const sorted = await trySortedResponse("music", req);
     if (sorted) return res.json(sorted);
 
-    const result = req.query.genre
-      ? await deezer.getTracksByGenre(req.query.genre)
-      : await deezer.getChartTracks(30);
+    const page = parsePage(req.query.page);
+    const genreId = req.query.genre || null;
+    const pool = await getPool("music", genreId);
 
-    result.items = await attachUserScores(result.items, "music");
-    res.json(result);
+    const start = (page - 1) * PAGE_SIZE;
+    const pageItems = pool.slice(start, start + PAGE_SIZE);
+
+    const items = await attachUserScores(pageItems, "music");
+
+    res.json({
+      items,
+      page,
+      totalPages: Math.max(1, Math.ceil(pool.length / PAGE_SIZE)),
+    });
   } catch (error) {
     next(error);
   }
