@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  X,
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  ArrowUpDown,
+} from "lucide-react";
 
 import Navbar from "../components/Navbar.jsx";
 import { fetchMediaItem, parseMediaId } from "../utils/api.js";
@@ -11,10 +19,68 @@ import "../components/AccountModal.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// Applies to every playlist's grid uniformly — no genre filter here,
+// since a custom playlist already mixes movies/shows/music/games and
+// genre wouldn't cleanly apply across all of them the way it does on
+// the single-category browse pages.
+const PLAYLIST_SORT_OPTIONS = [
+  { value: "", label: "Date Added" },
+  { value: "az", label: "A - Z" },
+  { value: "za", label: "Z - A" },
+  { value: "highest", label: "Highest Rated" },
+  { value: "lowest", label: "Lowest Rated" },
+  { value: "userScoreDesc", label: "Highest User Score" },
+  { value: "userScoreAsc", label: "Lowest User Score" },
+];
+
+function sortPlaylistItems(items, sortBy) {
+  const sorted = [...items];
+
+  switch (sortBy) {
+    case "az":
+      sorted.sort((a, b) => a.title.localeCompare(b.title));
+      break;
+    case "za":
+      sorted.sort((a, b) => b.title.localeCompare(a.title));
+      break;
+    case "highest":
+      sorted.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
+      break;
+    case "lowest":
+      sorted.sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity));
+      break;
+    case "userScoreDesc":
+      sorted.sort((a, b) => (b.userScore ?? -Infinity) - (a.userScore ?? -Infinity));
+      break;
+    case "userScoreAsc":
+      sorted.sort((a, b) => (a.userScore ?? Infinity) - (b.userScore ?? Infinity));
+      break;
+    default:
+      // "Date Added" — oldest first, matching the order items were
+      // originally saved into the playlist.
+      sorted.sort((a, b) => new Date(a.addedAt || 0) - new Date(b.addedAt || 0));
+  }
+
+  return sorted;
+}
+
 async function resolvePlaylistItems(entries) {
+  const normalizedEntries = (entries || []).map((entry) =>
+    typeof entry === "string" ? { mediaId: entry } : entry,
+  );
+
+  // Preserve each entry's addedAt so it can travel with the resolved
+  // item — needed for the "Date Added" sort option below.
+  const addedAtByMediaId = new Map();
+  for (const entry of normalizedEntries) {
+    if (entry?.mediaId) {
+      addedAtByMediaId.set(String(entry.mediaId), entry.addedAt);
+    }
+  }
+
   const validMediaIds = [...new Set(
-    (entries || [])
-      .map((entry) => (typeof entry === "string" ? entry : entry?.mediaId))
+    normalizedEntries
+      .map((entry) => entry?.mediaId)
       .filter(Boolean)
       .map(String)
       .filter((mediaId) => mediaId.includes("-") && mediaId.split("-").slice(1).join("-").trim()),
@@ -35,7 +101,7 @@ async function resolvePlaylistItems(entries) {
         return null;
       }
 
-      return item;
+      return { ...item, addedAt: addedAtByMediaId.get(mediaId) };
     }),
   );
 
@@ -62,11 +128,14 @@ function Playlists() {
   const navigate = useNavigate();
 
   // ---- Custom, named playlists (mix movies/shows/music/games) ----
-  // Each entry: { id, name, items: [{mediaId, mediaType}], resolvedItems: [fullMediaItem] }
+  // Each entry: { id, name, items: [{mediaId, mediaType, addedAt}], resolvedItems: [fullMediaItem] }
   const [customPlaylists, setCustomPlaylists] = useState([]);
   const [customLoading, setCustomLoading] = useState(true);
   const [customError, setCustomError] = useState("");
   const [removingCustomKey, setRemovingCustomKey] = useState(null); // `${playlistId}:${itemId}`
+
+  // Applies to every playlist's grid at once.
+  const [sortBy, setSortBy] = useState("");
 
   // Playlist IDs whose grid is currently collapsed. Starts empty so
   // every playlist opens expanded by default the first time it appears.
@@ -362,6 +431,31 @@ function Playlists() {
           </button>
         </div>
 
+        {customPlaylists.length > 0 && (
+          <div className="playlists-toolbar">
+            <div className="playlists-sort-bar">
+              <label htmlFor="playlists-sort-select" className="playlists-sort-icon">
+                <ArrowUpDown size={14} />
+                Sort By
+              </label>
+
+              <select
+                id="playlists-sort-select"
+                className="playlists-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                aria-label="Sort playlist items"
+              >
+                {PLAYLIST_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         {customError && <p className="playlists-error">{customError}</p>}
 
         {customLoading ? (
@@ -375,7 +469,9 @@ function Playlists() {
           <div className="playlist-sections">
             {customPlaylists.map((playlist) => {
               const isCollapsed = collapsedPlaylistIds.has(playlist.id);
-              const itemCount = (playlist.resolvedItems || []).length;
+              const resolvedItems = playlist.resolvedItems || [];
+              const sortedItems = sortPlaylistItems(resolvedItems, sortBy);
+              const itemCount = resolvedItems.length;
 
               return (
                 <section className="playlist-hub-section" key={playlist.id}>
@@ -446,7 +542,7 @@ function Playlists() {
                       </div>
                     ) : (
                       <div className="playlists-grid">
-                        {playlist.resolvedItems.map((item) => (
+                        {sortedItems.map((item) => (
                           <div className="playlist-card" key={item.id}>
                             <button
                               type="button"

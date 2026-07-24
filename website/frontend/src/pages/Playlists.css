@@ -323,3 +323,45 @@
     justify-content: center;
   }
 }
+
+.playlists-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0 0 16px;
+}
+
+.playlists-sort-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-surface);
+  flex-shrink: 0;
+  width: fit-content;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.03);
+}
+
+.playlists-sort-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pv-purple-strong);
+  flex-shrink: 0;
+}
+
+.playlists-sort-select {
+  border: none;
+  background: transparent;
+  color: var(--pv-text);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 4px 2px;
+  outline: none;
+  cursor: pointer;
+}
