@@ -68,6 +68,46 @@
   color: #fff;
 }
 
+/* Sort control — mirrors the category-page sort bar's look, but no
+   genre filter next to it since playlists mix media types. */
+.playlists-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.playlists-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-surface);
+}
+
+.playlists-sort-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--pv-purple-strong);
+  flex-shrink: 0;
+}
+
+.playlists-sort-select {
+  border: none;
+  background: transparent;
+  color: var(--pv-text);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 4px 2px;
+  outline: none;
+}
+
 .playlist-sections {
   display: flex;
   flex-direction: column;
@@ -126,13 +166,27 @@
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(6px);
+  transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* While a section is being dragged, fade it slightly so it reads as
+   "picked up" rather than just sitting there. */
+.playlist-hub-section.is-dragging {
+  opacity: 0.45;
+}
+
+/* Whichever section the dragged one is currently hovering over gets a
+   highlighted border, so it's obvious where a drop will land. */
+.playlist-hub-section.is-drag-over {
+  border-color: var(--pv-purple-strong);
+  box-shadow: 0 0 0 2px var(--pv-purple-pale);
 }
 
 .playlists-detail-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 18px;
 }
 
@@ -142,7 +196,31 @@
   color: var(--pv-text);
 }
 
-/* The whole title block (chevron + name + count) is a button that
+/* Drag handle — the only element with draggable=true, so accidental
+   drags don't start just from clicking the title or action buttons. */
+.playlist-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border-radius: 6px;
+  color: var(--pv-text-muted);
+  cursor: grab;
+}
+
+.playlist-drag-handle:hover {
+  color: var(--pv-purple-strong);
+  background: var(--pv-purple-pale);
+}
+
+.playlist-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* The title block (chevron + name + count) is a button that
    collapses/expands this playlist's grid. Styled to look identical to
    the plain heading it replaces, aside from the chevron and a pointer
    cursor, so it doesn't look like a stray unstyled button. */
@@ -192,6 +270,12 @@
 
 .playlist-hub-icon-btn:hover {
   transform: translateY(-1px);
+}
+
+.playlist-hub-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .playlist-hub-icon-btn.danger {
@@ -322,46 +406,13 @@
     width: 100%;
     justify-content: center;
   }
-}
 
-.playlists-toolbar {
-  display: flex;
-  justify-content: flex-start;
-  margin: 0 0 16px;
-}
+  .playlists-toolbar {
+    justify-content: stretch;
+  }
 
-.playlists-sort-bar {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px 6px 12px;
-  border: 1px solid var(--pv-border);
-  border-radius: 999px;
-  background: var(--pv-surface);
-  flex-shrink: 0;
-  width: fit-content;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.03);
-}
-
-.playlists-sort-icon {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--pv-purple-strong);
-  flex-shrink: 0;
-}
-
-.playlists-sort-select {
-  border: none;
-  background: transparent;
-  color: var(--pv-text);
-  font-weight: 600;
-  font-size: 13px;
-  padding: 4px 2px;
-  outline: none;
-  cursor: pointer;
+  .playlists-sort-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

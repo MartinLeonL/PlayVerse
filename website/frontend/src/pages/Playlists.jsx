@@ -8,6 +8,9 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
 } from "lucide-react";
 
 import Navbar from "../components/Navbar.jsx";
@@ -32,6 +35,44 @@ const PLAYLIST_SORT_OPTIONS = [
   { value: "userScoreDesc", label: "Highest User Score" },
   { value: "userScoreAsc", label: "Lowest User Score" },
 ];
+
+// The backend doesn't track a playlist display order, so the manually
+// arranged order lives in localStorage on this browser. It's applied on
+// top of whatever order the API returns, and any playlist not yet in
+// the stored order (e.g. one just created) is appended at the end.
+const PLAYLIST_ORDER_STORAGE_KEY = "pv-playlist-order";
+
+function loadStoredPlaylistOrder() {
+  try {
+    const raw = window.localStorage.getItem(PLAYLIST_ORDER_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredPlaylistOrder(orderedIds) {
+  try {
+    window.localStorage.setItem(PLAYLIST_ORDER_STORAGE_KEY, JSON.stringify(orderedIds));
+  } catch {
+    // Not fatal — worst case the manual order just doesn't persist.
+  }
+}
+
+function applyStoredOrder(playlists) {
+  const storedOrder = loadStoredPlaylistOrder();
+  const byId = new Map(playlists.map((playlist) => [playlist.id, playlist]));
+
+  const ordered = storedOrder
+    .map((id) => byId.get(id))
+    .filter(Boolean);
+
+  const orderedIds = new Set(ordered.map((playlist) => playlist.id));
+  const remaining = playlists.filter((playlist) => !orderedIds.has(playlist.id));
+
+  return [...ordered, ...remaining];
+}
 
 function sortPlaylistItems(items, sortBy) {
   const sorted = [...items];
@@ -129,6 +170,8 @@ function Playlists() {
 
   // ---- Custom, named playlists (mix movies/shows/music/games) ----
   // Each entry: { id, name, items: [{mediaId, mediaType, addedAt}], resolvedItems: [fullMediaItem] }
+  // Array order here IS the display order — reordering just re-sorts
+  // this array and mirrors the result into localStorage.
   const [customPlaylists, setCustomPlaylists] = useState([]);
   const [customLoading, setCustomLoading] = useState(true);
   const [customError, setCustomError] = useState("");
@@ -140,6 +183,10 @@ function Playlists() {
   // Playlist IDs whose grid is currently collapsed. Starts empty so
   // every playlist opens expanded by default the first time it appears.
   const [collapsedPlaylistIds, setCollapsedPlaylistIds] = useState(() => new Set());
+
+  // Drag-and-drop reordering state.
+  const [draggedPlaylistId, setDraggedPlaylistId] = useState(null);
+  const [dragOverPlaylistId, setDragOverPlaylistId] = useState(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -191,7 +238,7 @@ function Playlists() {
         })),
       );
 
-      setCustomPlaylists(withResolvedItems);
+      setCustomPlaylists(applyStoredOrder(withResolvedItems));
     } catch (requestError) {
       setCustomError(requestError.message);
     } finally {
@@ -215,6 +262,76 @@ function Playlists() {
 
       return next;
     });
+  }
+
+  // ---- Reordering ----
+
+  function reorderTo(fromId, toId) {
+    setCustomPlaylists((prev) => {
+      const fromIndex = prev.findIndex((playlist) => playlist.id === fromId);
+      const toIndex = prev.findIndex((playlist) => playlist.id === toId);
+
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+
+      saveStoredPlaylistOrder(next.map((playlist) => playlist.id));
+      return next;
+    });
+  }
+
+  function movePlaylist(playlistId, direction) {
+    setCustomPlaylists((prev) => {
+      const index = prev.findIndex((playlist) => playlist.id === playlistId);
+      const targetIndex = index + direction;
+
+      if (index === -1 || targetIndex < 0 || targetIndex >= prev.length) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+
+      saveStoredPlaylistOrder(next.map((playlist) => playlist.id));
+      return next;
+    });
+  }
+
+  function handleDragStart(event, playlistId) {
+    setDraggedPlaylistId(playlistId);
+    event.dataTransfer.effectAllowed = "move";
+    // Firefox requires data to actually be set for the drag to start.
+    event.dataTransfer.setData("text/plain", playlistId);
+  }
+
+  function handleDragOver(event, playlistId) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    if (draggedPlaylistId && draggedPlaylistId !== playlistId && dragOverPlaylistId !== playlistId) {
+      setDragOverPlaylistId(playlistId);
+    }
+  }
+
+  function handleDrop(event, targetPlaylistId) {
+    event.preventDefault();
+
+    if (draggedPlaylistId && draggedPlaylistId !== targetPlaylistId) {
+      reorderTo(draggedPlaylistId, targetPlaylistId);
+    }
+
+    setDraggedPlaylistId(null);
+    setDragOverPlaylistId(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedPlaylistId(null);
+    setDragOverPlaylistId(null);
   }
 
   // ---- Custom playlist actions ----
@@ -341,7 +458,12 @@ function Playlists() {
         throw new Error(data.message || "Unable to delete this playlist.");
       }
 
-      setCustomPlaylists((prev) => prev.filter((playlist) => playlist.id !== deletingPlaylist.id));
+      setCustomPlaylists((prev) => {
+        const next = prev.filter((playlist) => playlist.id !== deletingPlaylist.id);
+        saveStoredPlaylistOrder(next.map((playlist) => playlist.id));
+        return next;
+      });
+
       setDeletingPlaylist(null);
     } catch (requestError) {
       setCustomError(requestError.message);
@@ -413,24 +535,6 @@ function Playlists() {
 
         <p>Discover what to watch, what to hear, and what to play next.</p>
 
-        <div className="playlist-hub-head">
-          <div>
-            <h2>Your Playlists</h2>
-            <p className="playlist-hub-sub">Curate mood-based mixes or save your next obsession.</p>
-          </div>
-          <button
-            type="button"
-            className="playlist-hub-create-btn"
-            onClick={() => {
-              setCreateOpen(true);
-              setCreateName("");
-              setCreateError("");
-            }}
-          >
-            <Plus size={15} /> New Playlist
-          </button>
-        </div>
-
         {customPlaylists.length > 0 && (
           <div className="playlists-toolbar">
             <div className="playlists-sort-bar">
@@ -456,6 +560,27 @@ function Playlists() {
           </div>
         )}
 
+        <div className="playlist-hub-head">
+          <div>
+            <h2>Your Playlists</h2>
+            <p className="playlist-hub-sub">
+              Curate mood-based mixes or save your next obsession. Drag the{" "}
+              <GripVertical size={12} style={{ verticalAlign: "-1px" }} /> handle to reorder them.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="playlist-hub-create-btn"
+            onClick={() => {
+              setCreateOpen(true);
+              setCreateName("");
+              setCreateError("");
+            }}
+          >
+            <Plus size={15} /> New Playlist
+          </button>
+        </div>
+
         {customError && <p className="playlists-error">{customError}</p>}
 
         {customLoading ? (
@@ -467,15 +592,44 @@ function Playlists() {
           </div>
         ) : (
           <div className="playlist-sections">
-            {customPlaylists.map((playlist) => {
+            {customPlaylists.map((playlist, index) => {
               const isCollapsed = collapsedPlaylistIds.has(playlist.id);
               const resolvedItems = playlist.resolvedItems || [];
               const sortedItems = sortPlaylistItems(resolvedItems, sortBy);
               const itemCount = resolvedItems.length;
 
+              const isDragging = draggedPlaylistId === playlist.id;
+              const isDragOver = dragOverPlaylistId === playlist.id && !isDragging;
+
+              const sectionClassName = [
+                "playlist-hub-section",
+                isDragging ? "is-dragging" : "",
+                isDragOver ? "is-drag-over" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
               return (
-                <section className="playlist-hub-section" key={playlist.id}>
+                <section
+                  className={sectionClassName}
+                  key={playlist.id}
+                  onDragOver={(event) => handleDragOver(event, playlist.id)}
+                  onDrop={(event) => handleDrop(event, playlist.id)}
+                >
                   <div className="playlists-detail-head">
+                    <span
+                      className="playlist-drag-handle"
+                      draggable
+                      onDragStart={(event) => handleDragStart(event, playlist.id)}
+                      onDragEnd={handleDragEnd}
+                      role="button"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      title="Drag to reorder"
+                    >
+                      <GripVertical size={16} />
+                    </span>
+
                     <button
                       type="button"
                       className="playlist-collapse-toggle"
@@ -497,6 +651,28 @@ function Playlists() {
                     </button>
 
                     <div className="playlists-detail-actions">
+                      <button
+                        type="button"
+                        className="playlist-hub-icon-btn"
+                        onClick={() => movePlaylist(playlist.id, -1)}
+                        disabled={index === 0}
+                        aria-label={`Move ${playlist.name} up`}
+                        title="Move up"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="playlist-hub-icon-btn"
+                        onClick={() => movePlaylist(playlist.id, 1)}
+                        disabled={index === customPlaylists.length - 1}
+                        aria-label={`Move ${playlist.name} down`}
+                        title="Move down"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+
                       <button
                         type="button"
                         className="playlist-hub-icon-btn"
