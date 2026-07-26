@@ -180,8 +180,9 @@ function Playlists() {
   // Applies to every playlist's grid at once.
   const [sortBy, setSortBy] = useState("");
 
-  // Playlist IDs whose grid is currently collapsed. Starts empty so
-  // every playlist opens expanded by default the first time it appears.
+  // Playlist IDs whose grid is currently collapsed. Populated once
+  // playlists finish loading (see loadCustomPlaylists) so every
+  // playlist starts collapsed by default.
   const [collapsedPlaylistIds, setCollapsedPlaylistIds] = useState(() => new Set());
 
   // Drag-and-drop reordering state.
@@ -238,7 +239,10 @@ function Playlists() {
         })),
       );
 
-      setCustomPlaylists(applyStoredOrder(withResolvedItems));
+      const ordered = applyStoredOrder(withResolvedItems);
+
+      setCustomPlaylists(ordered);
+      setCollapsedPlaylistIds(new Set(ordered.map((playlist) => playlist.id)));
     } catch (requestError) {
       setCustomError(requestError.message);
     } finally {
