@@ -41,17 +41,6 @@
   background: var(--pv-surface);
 }
 
-.category-sort-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px 6px 12px;
-  border: 1px solid var(--pv-border);
-  border-radius: 999px;
-  background: var(--pv-surface);
-  flex-shrink: 0;
-}
-
 .category-filter-icon {
   display: flex;
   align-items: center;
@@ -71,6 +60,17 @@
   margin-bottom: 0;
 }
 
+/* .category-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-surface);
+  flex-shrink: 0;
+}
+
 .category-sort-select {
   border: none;
   background: transparent;
@@ -79,6 +79,91 @@
   font-size: 13px;
   padding: 4px 2px;
   outline: none;
+} */
+
+.category-sort-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: -100px;
+  margin-right: 20px;
+}
+
+.category-sort {
+  position: relative;
+}
+
+#sort-icon {
+  color: var(--pv-purple-strong);
+  size: 16px;
+}
+
+.category-sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  min-width: 200px;
+  border-radius: 999px;
+  padding: 0px 30px;
+  background: var(--pv-surface);
+  color: var(--pv-text);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.category-sort p {
+  color: var(--pv-purple-strong);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.category-sort-chevron {
+  transition: transform 160ms ease;
+}
+
+.category-sort-chevron.open {
+  transform: rotate(180deg);
+}
+
+.category-sort-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: var(--pv-surface);
+  box-shadow: var(--shadow);
+}
+
+.category-sort-option {
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background-color: transparent;
+  color: var(--pv-text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.category-sort-dropdown .category-sort-option:hover {
+  background-color: rgba(197, 197, 197, 0.404);
+}
+
+.category-sort-option.active {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .genre-pill {
@@ -208,5 +293,9 @@
 
   .category-sort-bar {
     justify-content: space-between;
+  }
+
+  .category-sort {
+    margin-top: 0px;
   }
 }

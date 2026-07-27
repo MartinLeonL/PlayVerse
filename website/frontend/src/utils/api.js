@@ -56,8 +56,17 @@ export function fetchGenres(type) {
   return request(`/api/media/genres/${type}`);
 }
 
-export function searchMedia({ type, query, page = 1 }) {
-  const params = new URLSearchParams({ type, query, page: String(page) });
+export function searchMedia({ type, query, page = 1, sort } = {}) {
+  const params = new URLSearchParams({
+    type,
+    query,
+    page: String(page),
+  });
+
+  if (sort) {
+    params.set("sort", sort);
+  }
+
   return request(`/api/media/search?${params.toString()}`);
 }
 
@@ -71,7 +80,9 @@ export function fetchMediaItem(type, id) {
 
 export function fetchReviews(mediaId, mediaType) {
   const params = new URLSearchParams({ mediaType });
-  return request(`/api/media/reviews/${encodeURIComponent(mediaId)}?${params.toString()}`);
+  return request(
+    `/api/media/reviews/${encodeURIComponent(mediaId)}?${params.toString()}`,
+  );
 }
 
 // Our normalized IDs look like "movie-27205", "show-1399", "music-3135556",

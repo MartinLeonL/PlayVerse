@@ -75,7 +75,7 @@
   flex-shrink: 0;
 }
 
-.sort-btn {
+/* .sort-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -121,6 +121,91 @@
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
   font-weight: 600;
+} */
+
+.search-sort {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-top: 130px;
+  margin-right: 20px;
+}
+
+.search-sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  min-width: 200px;
+  border-radius: 999px;
+  padding: 0px 30px;
+  background: var(--pv-surface);
+  color: var(--pv-text);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#sort-icon {
+  color: var(--pv-purple-strong);
+  size: 16px;
+}
+
+.search-sort p {
+  color: var(--pv-purple-strong);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.search-sort-dropdown .search-sort-option:hover {
+  background-color: rgba(197, 197, 197, 0.404);
+}
+
+.search-sort-chevron {
+  transition: transform 160ms ease;
+}
+
+.search-sort-chevron.open {
+  transform: rotate(180deg);
+}
+
+.search-sort-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: var(--pv-surface);
+  box-shadow: var(--shadow);
+}
+
+.search-sort-option {
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background-color: transparent;
+  color: var(--pv-text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.search-sort-dropdown .search-sort-option:hover {
+  background-color: rgba(197, 197, 197, 0.404);
+}
+
+.search-sort-option.active {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .search-grid {
@@ -135,13 +220,13 @@
 
 .search-poster {
   position: relative;
-  width: 100%;
+  width: 200px;
+  height: 300px;
   aspect-ratio: 150 / 210;
-  border-radius: 12px;
+  border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
   text-align: center;
 }
 
@@ -174,7 +259,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 
 .search-poster span {
   color: #fff;
@@ -271,5 +355,8 @@
   }
   .search-tabs {
     flex-wrap: wrap;
+  }
+  .search-sort {
+    margin-top: 0px;
   }
 }

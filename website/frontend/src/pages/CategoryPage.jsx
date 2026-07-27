@@ -6,15 +6,16 @@ import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
 import { CATEGORY_FETCHERS, fetchGenres } from "../utils/api.js";
 import { formatScore } from "../utils/format.js";
 import "./CategoryPage.css";
+import { ChevronDown } from "lucide-react";
 
 // Music has no external rating at all (Deezer doesn't track one), so
 // "Highest/Lowest Rated" wouldn't mean anything there — the PlayVerse
 // user-score options still apply everywhere, since that's our own data.
 const SORT_OPTIONS_DEFAULT = [
-  { value: "", label: "Trending" },
+  { value: "", label: "Popularity" },
+  { value: "recent", label: "Recent" },
   { value: "az", label: "A - Z" },
   { value: "za", label: "Z - A" },
-  { value: "recent", label: "Recent" },
   { value: "highest", label: "Highest Rated" },
   { value: "lowest", label: "Lowest Rated" },
   { value: "userScoreDesc", label: "Highest User Score" },
@@ -22,10 +23,10 @@ const SORT_OPTIONS_DEFAULT = [
 ];
 
 const SORT_OPTIONS_MUSIC = [
-  { value: "", label: "Trending" },
+  { value: "", label: "Popularity" },
+  { value: "recent", label: "Recent" },
   { value: "az", label: "A - Z" },
   { value: "za", label: "Z - A" },
-  { value: "recent", label: "Recent" },
   { value: "userScoreDesc", label: "Highest User Score" },
   { value: "userScoreAsc", label: "Lowest User Score" },
 ];
@@ -42,9 +43,13 @@ function CategoryPage({ navKey, title }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const [pickerItem, setPickerItem] = useState(null);
+  const [sortOpen, setSortOpen] = useState(false);
 
-  const sortOptions = navKey === "music" ? SORT_OPTIONS_MUSIC : SORT_OPTIONS_DEFAULT;
+  const sortOptions =
+    navKey === "music" ? SORT_OPTIONS_MUSIC : SORT_OPTIONS_DEFAULT;
 
+  const sortLabel =
+    sortOptions.find((option) => option.value === sort)?.label || "Default";
   useEffect(() => {
     let cancelled = false;
 
@@ -77,7 +82,11 @@ function CategoryPage({ navKey, title }) {
 
         const fetcher = CATEGORY_FETCHERS[navKey];
         const genreParam = activeGenre === "All" ? undefined : activeGenre;
-        const data = await fetcher({ page: 1, genre: genreParam, sort: sort || undefined });
+        const data = await fetcher({
+          page: 1,
+          genre: genreParam,
+          sort: sort || undefined,
+        });
 
         if (!cancelled) {
           const fetchedItems = data.items || [];
@@ -108,7 +117,11 @@ function CategoryPage({ navKey, title }) {
       const fetcher = CATEGORY_FETCHERS[navKey];
       const genreParam = activeGenre === "All" ? undefined : activeGenre;
       const nextPage = page + 1;
-      const data = await fetcher({ page: nextPage, genre: genreParam, sort: sort || undefined });
+      const data = await fetcher({
+        page: nextPage,
+        genre: genreParam,
+        sort: sort || undefined,
+      });
       const fetchedItems = data.items || [];
 
       if (fetchedItems.length === 0) {
@@ -163,7 +176,9 @@ function CategoryPage({ navKey, title }) {
             <div className="category-genres">
               <button
                 type="button"
-                className={activeGenre === "All" ? "genre-pill active" : "genre-pill"}
+                className={
+                  activeGenre === "All" ? "genre-pill active" : "genre-pill"
+                }
                 onClick={() => setActiveGenre("All")}
               >
                 All
@@ -172,7 +187,11 @@ function CategoryPage({ navKey, title }) {
                 <button
                   key={g.id}
                   type="button"
-                  className={activeGenre === String(g.id) ? "genre-pill active" : "genre-pill"}
+                  className={
+                    activeGenre === String(g.id)
+                      ? "genre-pill active"
+                      : "genre-pill"
+                  }
                   onClick={() => setActiveGenre(String(g.id))}
                 >
                   {g.name}
@@ -182,31 +201,67 @@ function CategoryPage({ navKey, title }) {
           </div>
 
           <div className="category-sort-bar">
-            <label htmlFor="category-sort-select" className="category-filter-icon">
-              <ArrowUpDown size={14} />
-              Sort By
-            </label>
+            <div className="category-sort">
+              <button
+                type="button"
+                className="category-sort-btn"
+                onClick={() => setSortOpen((current) => !current)}
+                aria-haspopup="listbox"
+                aria-expanded={sortOpen}
+              >
+                <ArrowUpDown id="sort-icon" size={16} />
 
-            <select
-              id="category-sort-select"
-              className="category-sort-select"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              aria-label="Sort by"
-            >
-              {sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+                <p>Sort By:</p>
+                <span>{sortLabel}</span>
+
+                <ChevronDown
+                  size={16}
+                  id="sort-icon"
+                  className={
+                    sortOpen
+                      ? "category-sort-chevron open"
+                      : "category-sort-chevron"
+                  }
+                />
+              </button>
+
+              {sortOpen && (
+                <div
+                  className="category-sort-dropdown"
+                  role="listbox"
+                  aria-label="Sort category"
+                >
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="option"
+                      aria-selected={sort === option.value}
+                      className={
+                        sort === option.value
+                          ? "category-sort-option active"
+                          : "category-sort-option"
+                      }
+                      onClick={() => {
+                        setSort(option.value);
+                        setSortOpen(false);
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {loading ? (
           <p className="category-empty">Loading...</p>
         ) : error ? (
-          <p className="category-empty">Couldn&apos;t load this category: {error}</p>
+          <p className="category-empty">
+            Couldn&apos;t load this category: {error}
+          </p>
         ) : items.length === 0 ? (
           <p className="category-empty">Nothing in this genre yet.</p>
         ) : (
@@ -222,14 +277,25 @@ function CategoryPage({ navKey, title }) {
                   onKeyDown={(e) => e.key === "Enter" && openMedia(item)}
                 >
                   <div className="category-poster">
-                    <img src={item.posterImage} alt={`${item.title} poster`} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "12px" }} />
+                    <img
+                      src={item.posterImage}
+                      alt={`${item.title} poster`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        borderRadius: "12px",
+                      }}
+                    />
                     {item.userScore != null && (
                       <span className="score-badge score-badge-user">
                         ★ {formatScore(item.userScore)}
                       </span>
                     )}
                     {item.type === "music" && item.artist ? (
-                      <span className="score-badge score-badge-artist">{item.artist}</span>
+                      <span className="score-badge score-badge-artist">
+                        {item.artist}
+                      </span>
                     ) : (
                       item.score != null && (
                         <span className="score-badge score-badge-external">
@@ -261,7 +327,10 @@ function CategoryPage({ navKey, title }) {
       </main>
 
       {pickerItem && (
-        <PlaylistPickerModal item={pickerItem} onClose={() => setPickerItem(null)} />
+        <PlaylistPickerModal
+          item={pickerItem}
+          onClose={() => setPickerItem(null)}
+        />
       )}
     </div>
   );
