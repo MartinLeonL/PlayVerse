@@ -105,8 +105,11 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
           const SnackBar(content: Text('Review saved')),
         );
       }
-      // Refresh the public list so a note just saved shows up immediately.
+      // Refresh both the public reviews list and the item's own scores
+      // (the average just changed) so the page reflects the new rating
+      // immediately, instead of only updating after a reload.
       _loadReviews();
+      _loadFullDetails();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
