@@ -3,7 +3,7 @@ const { mapProviders } = require("./providers");
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 
-async function tmdbFetch(path, params = {}) {
+async function tmdbFetch(path, params = {}, retries = 2) {
   const url = new URL(`${TMDB_BASE}${path}`);
 
   url.searchParams.set("api_key", process.env.TMDB_API_KEY);
@@ -15,14 +15,32 @@ async function tmdbFetch(path, params = {}) {
     }
   }
 
-  const response = await fetch(url);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url);
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`TMDB request failed (${response.status}): ${body}`);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`TMDB request failed (${response.status}): ${body}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Node's fetch throws a TypeError (not a plain Error) for
+      // network-level failures like a connection reset — genuine HTTP
+      // error responses (thrown above as a plain Error) aren't worth
+      // retrying, but a stale reused connection usually succeeds on a
+      // fresh attempt.
+      const isNetworkError = error instanceof TypeError;
+      const isLastAttempt = attempt === retries;
+
+      if (!isNetworkError || isLastAttempt) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
   }
-
-  return response.json();
 }
 
 function posterUrl(path) {

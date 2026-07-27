@@ -3,7 +3,7 @@ const { findGameTrailer } = require("./youtube");
 const RAWG_BASE = "https://api.rawg.io/api";
 const PAGE_SIZE = 20;
 
-async function rawgFetch(path, params = {}) {
+async function rawgFetch(path, params = {}, retries = 2) {
   const url = new URL(`${RAWG_BASE}${path}`);
 
   url.searchParams.set("key", process.env.RAWG_API_KEY);
@@ -14,14 +14,27 @@ async function rawgFetch(path, params = {}) {
     }
   }
 
-  const response = await fetch(url);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url);
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`RAWG request failed (${response.status}): ${body}`);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`RAWG request failed (${response.status}): ${body}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      const isNetworkError = error instanceof TypeError;
+      const isLastAttempt = attempt === retries;
+
+      if (!isNetworkError || isLastAttempt) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
   }
-
-  return response.json();
 }
 
 // RAWG's description_raw often concatenates multiple language

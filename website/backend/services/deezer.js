@@ -3,7 +3,7 @@ const { findMusicVideo } = require("./youtube");
 
 const DEEZER_BASE = "https://api.deezer.com";
 
-async function deezerFetch(path, params = {}) {
+async function deezerFetch(path, params = {}, retries = 2) {
   const url = new URL(`${DEEZER_BASE}${path}`);
 
   for (const [key, value] of Object.entries(params)) {
@@ -12,14 +12,27 @@ async function deezerFetch(path, params = {}) {
     }
   }
 
-  const response = await fetch(url);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url);
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Deezer request failed (${response.status}): ${body}`);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`Deezer request failed (${response.status}): ${body}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      const isNetworkError = error instanceof TypeError;
+      const isLastAttempt = attempt === retries;
+
+      if (!isNetworkError || isLastAttempt) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
   }
-
-  return response.json();
 }
 
 function formatDuration(seconds) {
