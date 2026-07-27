@@ -926,6 +926,58 @@ router.get("/custom-playlists", requireAuth, async (req, res, next) => {
   }
 });
 
+// PUT reorder the playlists themselves (not items within a playlist)
+router.put("/custom-playlists/reorder", requireAuth, async (req, res, next) => {
+  try {
+    if (!ObjectId.isValid(req.userId)) {
+      return res.status(401).json({ message: "Invalid login session." });
+    }
+
+    const orderedPlaylistIds = Array.isArray(req.body.orderedPlaylistIds)
+      ? req.body.orderedPlaylistIds
+      : null;
+
+    if (!orderedPlaylistIds) {
+      return res.status(400).json({ message: "orderedPlaylistIds must be an array." });
+    }
+
+    const users = getUsersCollection();
+    const userId = new ObjectId(req.userId);
+
+    const user = await users.findOne(
+      { _id: userId },
+      { projection: { customPlaylists: 1 } },
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "Account not found." });
+    }
+
+    const current = user.customPlaylists || [];
+
+    // Reorders the existing playlist sub-documents to match the
+    // requested sequence. Anything the client didn't mention (shouldn't
+    // normally happen) gets appended at the end rather than silently
+    // dropped, in case a playlist was created elsewhere in the meantime.
+    const byId = new Map(current.map((playlist) => [playlist.id, playlist]));
+    const reordered = orderedPlaylistIds.map((id) => byId.get(id)).filter(Boolean);
+
+    const mentioned = new Set(orderedPlaylistIds);
+    const remaining = current.filter((playlist) => !mentioned.has(playlist.id));
+
+    const newOrder = [...reordered, ...remaining];
+
+    await users.updateOne(
+      { _id: userId },
+      { $set: { customPlaylists: newOrder, updatedAt: new Date() } },
+    );
+
+    return res.json({ message: "Playlists reordered." });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST create a new named playlist
 router.post("/custom-playlists", requireAuth, async (req, res, next) => {
   try {
