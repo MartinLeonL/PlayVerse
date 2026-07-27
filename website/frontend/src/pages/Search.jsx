@@ -6,6 +6,7 @@ import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
 import { CATEGORY_FETCHERS, searchMedia } from "../utils/api.js";
 import { formatScore } from "../utils/format.js";
 import "./Search.css";
+import { ArrowUpDown } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -16,10 +17,36 @@ const categories = [
   { key: "games", label: "Games" },
 ];
 
-const sortOptions = [
-  { key: "popularity", label: "Popularity" },
-  { key: "recent", label: "Recent" },
-  { key: "trending", label: "Trending" },
+const SORT_OPTIONS_DEFAULT = [
+  { value: "", label: "Popularity" },
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+  { value: "za", label: "Z - A" },
+  { value: "highest", label: "Highest Rated" },
+  { value: "lowest", label: "Lowest Rated" },
+  {
+    value: "userScoreDesc",
+    label: "Highest User Score",
+  },
+  {
+    value: "userScoreAsc",
+    label: "Lowest User Score",
+  },
+];
+
+const SORT_OPTIONS_MUSIC = [
+  { value: "", label: "Popularity" },
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+  { value: "za", label: "Z - A" },
+  {
+    value: "userScoreDesc",
+    label: "Highest User Score",
+  },
+  {
+    value: "userScoreAsc",
+    label: "Lowest User Score",
+  },
 ];
 
 function Search() {
@@ -34,9 +61,14 @@ function Search() {
 
   const [activeCategory, setActiveCategory] = useState("movies");
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState("popularity");
+  const [sortBy, setSortBy] = useState("");
   const [sortOpen, setSortOpen] = useState(false);
   const [results, setResults] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,47 +80,200 @@ function Search() {
   // picker would just be redundant there.
   const [pickerItem, setPickerItem] = useState(null);
 
-  const sortLabel = sortOptions.find((s) => s.key === sortBy)?.label;
+  const sortOptions =
+    activeCategory === "music" ? SORT_OPTIONS_MUSIC : SORT_OPTIONS_DEFAULT;
+
+  const sortLabel =
+    sortOptions.find((option) => option.value === sortBy)?.label || "Trending";
+
+  async function fetchResultsPage(pageNumber) {
+    if (debouncedQuery) {
+      return searchMedia({
+        type: activeCategory,
+        query: debouncedQuery,
+        page: pageNumber,
+        sort: sortBy || undefined,
+      });
+    }
+
+    const fetcher = CATEGORY_FETCHERS[activeCategory];
+
+    return fetcher({
+      page: pageNumber,
+      sort: sortBy || undefined,
+    });
+  }
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 300);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [query]);
+
+  useEffect(() => {
+    const sortStillExists = sortOptions.some(
+      (option) => option.value === sortBy,
+    );
+
+    if (!sortStillExists) {
+      setSortBy("");
+    }
+  }, [activeCategory, sortBy, sortOptions]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadResults() {
+    async function loadFirstPage() {
       try {
         setLoading(true);
         setError("");
 
-        const trimmedQuery = query.trim();
-
-        const data = trimmedQuery
-          ? await searchMedia({ type: activeCategory, query: trimmedQuery })
-          : await CATEGORY_FETCHERS[activeCategory]();
-
-        if (cancelled) return;
-
-        let items = data.items;
-
-        if (sortBy === "recent") {
-          items = [...items].sort((a, b) => (a.date < b.date ? 1 : -1));
-        } else if (sortBy === "trending") {
-          items = [...items].reverse();
+        const data = await fetchResultsPage(1);
+        if (activeCategory === "music") {
+          console.log("Music item:", data.items?.[0]);
         }
 
-        setResults(items);
+        if (cancelled) {
+          return;
+        }
+
+        const fetchedItems = data.items || [];
+
+        setResults(fetchedItems);
+        setPage(1);
+
+        setHasMore(fetchedItems.length > 0 && 1 < (data.totalPages ?? 1));
       } catch (requestError) {
-        if (!cancelled) setError(requestError.message);
+        if (!cancelled) {
+          setError(requestError.message);
+          setResults([]);
+          setPage(1);
+          setHasMore(false);
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    const timeoutId = setTimeout(loadResults, 300); // debounce typing
+    loadFirstPage();
 
     return () => {
       cancelled = true;
-      clearTimeout(timeoutId);
     };
-  }, [activeCategory, query, sortBy]);
+  }, [activeCategory, debouncedQuery, sortBy]);
+
+  async function loadNextPage() {
+    if (loading || loadingMore || !hasMore) {
+      return;
+    }
+
+    try {
+      setLoadingMore(true);
+      setError("");
+
+      const nextPage = page + 1;
+
+      const data = await fetchResultsPage(nextPage);
+
+      const fetchedItems = data.items || [];
+
+      if (fetchedItems.length === 0) {
+        setHasMore(false);
+        return;
+      }
+      setResults((currentResults) => {
+        const existingIds = new Set(
+          currentResults.map((item) => String(item.id)),
+        );
+
+        const newItems = fetchedItems.filter(
+          (item) => !existingIds.has(String(item.id)),
+        );
+
+        return [...currentResults, ...newItems];
+      });
+
+      setPage(nextPage);
+
+      setHasMore(nextPage < (data.totalPages ?? nextPage));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    function handleScroll() {
+      const scrollBottom = window.innerHeight + window.scrollY;
+
+      const pageHeight = document.documentElement.scrollHeight;
+
+      if (scrollBottom >= pageHeight - 400) {
+        loadNextPage();
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [
+    loading,
+    loadingMore,
+    hasMore,
+    page,
+    activeCategory,
+    debouncedQuery,
+    sortBy,
+  ]);
+
+  // useEffect(() => {
+  //   let cancelled = false;
+
+  //   async function loadResults() {
+  //     try {
+  //       setLoading(true);
+  //       setError("");
+
+  //       const trimmedQuery = query.trim();
+
+  //       const data = trimmedQuery
+  //         ? await searchMedia({ type: activeCategory, query: trimmedQuery })
+  //         : await CATEGORY_FETCHERS[activeCategory]();
+
+  //       if (cancelled) return;
+
+  //       let items = data.items;
+
+  //       if (sortBy === "recent") {
+  //         items = [...items].sort((a, b) => (a.date < b.date ? 1 : -1));
+  //       } else if (sortBy === "trending") {
+  //         items = [...items].reverse();
+  //       }
+
+  //       setResults(items);
+  //     } catch (requestError) {
+  //       if (!cancelled) setError(requestError.message);
+  //     } finally {
+  //       if (!cancelled) setLoading(false);
+  //     }
+  //   }
+
+  //   const timeoutId = setTimeout(loadResults, 300);
+
+  //   return () => {
+  //     cancelled = true;
+  //     clearTimeout(timeoutId);
+  //   };
+  // }, [activeCategory, query, sortBy]);
 
   function openMedia(item) {
     navigate(`/media/${encodeURIComponent(item.id)}`);
@@ -140,7 +325,8 @@ function Search() {
       <main className="search-main">
         {addToPlaylistId && (
           <p className="search-add-mode-banner">
-            Adding to <strong>{addToPlaylistName}</strong> — tap a result to add it.
+            Adding to <strong>{addToPlaylistName}</strong> — tap a result to add
+            it.
           </p>
         )}
 
@@ -164,7 +350,11 @@ function Search() {
                 <button
                   key={c.key}
                   type="button"
-                  className={activeCategory === c.key ? "search-tab active" : "search-tab"}
+                  className={
+                    activeCategory === c.key
+                      ? "search-tab active"
+                      : "search-tab"
+                  }
                   onClick={() => setActiveCategory(c.key)}
                 >
                   {c.label}
@@ -174,22 +364,50 @@ function Search() {
           </div>
 
           <div className="search-sort">
-            <button type="button" className="sort-btn" onClick={() => setSortOpen((v) => !v)}>
-              Sort By: {sortLabel} <ChevronDown size={16} />
+            <button
+              type="button"
+              className="search-sort-btn"
+              onClick={() => setSortOpen((current) => !current)}
+              aria-haspopup="listbox"
+              aria-expanded={sortOpen}
+            >
+              <ArrowUpDown id="sort-icon" size={14} />
+
+              <p>Sort By:</p>
+              <span>{sortLabel}</span>
+
+              <ChevronDown
+                size={16}
+                id="sort-icon"
+                className={
+                  sortOpen ? "search-sort-chevron open" : "search-sort-chevron"
+                }
+              />
             </button>
+
             {sortOpen && (
-              <div className="sort-dropdown">
-                {sortOptions.map((opt) => (
+              <div
+                className="search-sort-dropdown"
+                role="listbox"
+                aria-label="Sort search results"
+              >
+                {sortOptions.map((option) => (
                   <button
-                    key={opt.key}
+                    key={option.value || "trending"}
                     type="button"
-                    className={sortBy === opt.key ? "sort-option active" : "sort-option"}
+                    role="option"
+                    aria-selected={sortBy === option.value}
+                    className={
+                      sortBy === option.value
+                        ? "search-sort-option active"
+                        : "search-sort-option"
+                    }
                     onClick={() => {
-                      setSortBy(opt.key);
+                      setSortBy(option.value);
                       setSortOpen(false);
                     }}
                   >
-                    {opt.label}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -212,7 +430,9 @@ function Search() {
               <div
                 className="search-card"
                 key={item.id}
-                onClick={() => (addToPlaylistId ? handleAddToPlaylist(item) : openMedia(item))}
+                onClick={() =>
+                  addToPlaylistId ? handleAddToPlaylist(item) : openMedia(item)
+                }
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -221,14 +441,25 @@ function Search() {
                 }}
               >
                 <div className="search-poster">
-                  <img src={item.posterImage} alt={`${item.title} poster`} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "12px" }} />
+                  <img
+                    src={item.posterImage}
+                    alt={`${item.title} poster`}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      borderRadius: "12px",
+                    }}
+                  />
                   {item.userScore != null && (
                     <span className="score-badge score-badge-user">
                       ★ {formatScore(item.userScore)}
                     </span>
                   )}
                   {item.type === "music" && item.artist ? (
-                    <span className="score-badge score-badge-artist">{item.artist}</span>
+                    <span className="score-badge score-badge-artist">
+                      {item.artist}
+                    </span>
                   ) : (
                     item.score != null && (
                       <span className="score-badge score-badge-external">
@@ -262,12 +493,16 @@ function Search() {
                 )}
               </div>
             ))}
+            {loadingMore && <p className="search-empty">Loading more...</p>}
           </div>
         )}
       </main>
 
       {pickerItem && (
-        <PlaylistPickerModal item={pickerItem} onClose={() => setPickerItem(null)} />
+        <PlaylistPickerModal
+          item={pickerItem}
+          onClose={() => setPickerItem(null)}
+        />
       )}
     </div>
   );
