@@ -198,6 +198,12 @@ class ApiService {
     return List<Map<String, dynamic>>.from(res.data['playlists'] ?? []);
   }
 
+  Future<void> reorderPlaylists(List<String> orderedPlaylistIds) async {
+    await _dio.put('/auth/custom-playlists/reorder', data: {
+      'orderedPlaylistIds': orderedPlaylistIds,
+    });
+  }
+
   Future<Map<String, dynamic>> createCustomPlaylist(String name) async {
     final res = await _dio.post('/auth/custom-playlists', data: {'name': name});
     return res.data['playlist'] as Map<String, dynamic>;

@@ -156,6 +156,29 @@ class PlaylistStore extends ChangeNotifier {
     }
   }
 
+  /// Moves a playlist from oldIndex to newIndex in the top-level list —
+  /// matches the raw indices a ReorderableListView reports directly
+  /// (including its "already removed the old item" quirk on newIndex),
+  /// applied optimistically, then persisted to the backend.
+  Future<void> reorderPlaylists(int oldIndex, int newIndex) async {
+    final previousOrder = List<Playlist>.from(playlists);
+
+    final playlist = playlists.removeAt(oldIndex);
+    final adjustedNewIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    playlists.insert(adjustedNewIndex, playlist);
+    notifyListeners();
+
+    try {
+      await ApiService().reorderPlaylists(playlists.map((p) => p.id).toList());
+    } catch (e) {
+      print('Failed to persist playlist reorder: $e');
+      playlists
+        ..clear()
+        ..addAll(previousOrder);
+      notifyListeners();
+    }
+  }
+
   Future<void> removeItemFromPlaylist(String playlistId, MediaItem item) async {
     final playlist = _findById(playlistId);
     if (playlist == null) return;
