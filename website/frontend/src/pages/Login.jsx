@@ -55,7 +55,7 @@ function Login() {
   const navigate = useNavigate();
   const showToast = useToast();
 
-  const API_URL = "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   //  This is the handleSubmit function while testing the frontend without the backend.
   // async function handleSubmit(e) {
