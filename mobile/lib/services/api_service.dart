@@ -12,7 +12,7 @@ class ApiService {
     _dio = Dio(BaseOptions(
       // TODO: replace with the real deployed web backend URL — this is
       // the one thing I can't fill in myself, since I don't know it.
-      baseUrl: 'http://10.0.2.2:5000/api',
+      baseUrl: 'https://your-actual-backend.onrender.com/api',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
     ));
