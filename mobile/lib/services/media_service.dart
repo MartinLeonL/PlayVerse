@@ -14,7 +14,7 @@ class MediaService {
   MediaService._internal() {
     _dio = Dio(BaseOptions(
       // TODO: replace with the real deployed web backend URL, same as api_service.dart
-      baseUrl: 'http://10.0.2.2:5000/api',
+      baseUrl: 'https://playverseapp.onrender.com/api',
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 20),
     ));
