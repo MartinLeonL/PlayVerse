@@ -1,0 +1,11 @@
+process.env.NODE_ENV = process.env.NODE_ENV || "test";
+process.env.MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/playverse-test";
+process.env.MONGODB_DB = process.env.MONGODB_DB || "playverse-test";
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret";
+process.env.FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+process.env.SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "SG.test-key";
+process.env.SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "test@example.com";
+process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "test-google-client-id";
+process.env.TMDB_API_KEY = process.env.TMDB_API_KEY || "test-tmdb-key";
+process.env.RAWG_API_KEY = process.env.RAWG_API_KEY || "test-rawg-key";
+process.env.GROQ_API_KEY = process.env.GROQ_API_KEY || "test-groq-key";
