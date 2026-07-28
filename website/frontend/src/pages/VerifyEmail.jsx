@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./VerifyEmail.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 function VerifyEmail() {
   const [searchParams] = useSearchParams();
 
@@ -31,7 +33,7 @@ function VerifyEmail() {
     async function verifyEmail() {
       try {
         const response = await fetch(
-          "http://localhost:5000/api/auth/verify-email",
+          `${API_URL}/api/auth/verify-email`,
           {
             method: "POST",
             headers: {
