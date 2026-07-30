@@ -6,6 +6,7 @@ import PlaylistPickerModal from "../components/PlaylistPickerModal.jsx";
 import { CATEGORY_FETCHERS, searchMedia } from "../utils/api.js";
 import { formatScore } from "../utils/format.js";
 import "./Search.css";
+import { ArrowUpDown } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -16,10 +17,27 @@ const categories = [
   { key: "games", label: "Games" },
 ];
 
-const sortOptions = [
-  { key: "popularity", label: "Popularity" },
-  { key: "recent", label: "Recent" },
-  { key: "trending", label: "Trending" },
+// Music has no external rating at all (Deezer doesn't track one), so
+// "Highest/Lowest Rated" wouldn't mean anything there — the PlayVerse
+// user-score options still apply everywhere, since that's our own data.
+const SORT_OPTIONS_DEFAULT = [
+  { value: "", label: "Popularity" },
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+  { value: "za", label: "Z - A" },
+  { value: "highest", label: "Highest Rated" },
+  { value: "lowest", label: "Lowest Rated" },
+  { value: "userScoreDesc", label: "Highest User Score" },
+  { value: "userScoreAsc", label: "Lowest User Score" },
+];
+
+const SORT_OPTIONS_MUSIC = [
+  { value: "", label: "Popularity" },
+  { value: "recent", label: "Recent" },
+  { value: "az", label: "A - Z" },
+  { value: "za", label: "Z - A" },
+  { value: "userScoreDesc", label: "Highest User Score" },
+  { value: "userScoreAsc", label: "Lowest User Score" },
 ];
 
 function Search() {
@@ -34,7 +52,7 @@ function Search() {
 
   const [activeCategory, setActiveCategory] = useState("movies");
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState("popularity");
+  const [sortBy, setSortBy] = useState("");
   const [sortOpen, setSortOpen] = useState(false);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +66,15 @@ function Search() {
   // picker would just be redundant there.
   const [pickerItem, setPickerItem] = useState(null);
 
-  const sortLabel = sortOptions.find((s) => s.key === sortBy)?.label;
+  const sortOptions = activeCategory === "music" ? SORT_OPTIONS_MUSIC : SORT_OPTIONS_DEFAULT;
+  const sortLabel = sortOptions.find((option) => option.value === sortBy)?.label || "Popularity";
+
+  useEffect(() => {
+    const sortStillExists = sortOptions.some((option) => option.value === sortBy);
+    if (!sortStillExists) {
+      setSortBy("");
+    }
+  }, [activeCategory, sortBy, sortOptions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,22 +89,14 @@ function Search() {
         // Artists have no "popular artists" browse endpoint — only
         // searchable by name, unlike the other categories.
         const data = trimmedQuery
-          ? await searchMedia({ type: activeCategory, query: trimmedQuery })
+          ? await searchMedia({ type: activeCategory, query: trimmedQuery, sort: sortBy || undefined })
           : activeCategory === "artist"
             ? { items: [] }
-            : await CATEGORY_FETCHERS[activeCategory]();
+            : await CATEGORY_FETCHERS[activeCategory]({ sort: sortBy || undefined });
 
         if (cancelled) return;
 
-        let items = data.items;
-
-        if (sortBy === "recent") {
-          items = [...items].sort((a, b) => (a.date < b.date ? 1 : -1));
-        } else if (sortBy === "trending") {
-          items = [...items].reverse();
-        }
-
-        setResults(items);
+        setResults(data.items || []);
       } catch (requestError) {
         if (!cancelled) setError(requestError.message);
       } finally {
@@ -187,22 +205,40 @@ function Search() {
           </div>
 
           <div className="search-sort">
-            <button type="button" className="sort-btn" onClick={() => setSortOpen((v) => !v)}>
-              Sort By: {sortLabel} <ChevronDown size={16} />
+            <button
+              type="button"
+              className="search-sort-btn"
+              onClick={() => setSortOpen((current) => !current)}
+              aria-haspopup="listbox"
+              aria-expanded={sortOpen}
+            >
+              <ArrowUpDown id="sort-icon" size={14} />
+
+              <p>Sort By:</p>
+              <span>{sortLabel}</span>
+
+              <ChevronDown
+                size={16}
+                id="sort-icon"
+                className={sortOpen ? "search-sort-chevron open" : "search-sort-chevron"}
+              />
             </button>
+
             {sortOpen && (
-              <div className="sort-dropdown">
-                {sortOptions.map((opt) => (
+              <div className="search-sort-dropdown" role="listbox" aria-label="Sort search results">
+                {sortOptions.map((option) => (
                   <button
-                    key={opt.key}
+                    key={option.value || "popularity"}
                     type="button"
-                    className={sortBy === opt.key ? "sort-option active" : "sort-option"}
+                    role="option"
+                    aria-selected={sortBy === option.value}
+                    className={sortBy === option.value ? "search-sort-option active" : "search-sort-option"}
                     onClick={() => {
-                      setSortBy(opt.key);
+                      setSortBy(option.value);
                       setSortOpen(false);
                     }}
                   >
-                    {opt.label}
+                    {option.label}
                   </button>
                 ))}
               </div>
