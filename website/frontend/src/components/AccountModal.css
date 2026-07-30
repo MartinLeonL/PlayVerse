@@ -178,30 +178,3 @@
 .delete-modal-confirm:hover {
   background: #d43d42;
 }
-
-/* Edit-account modal specifically — scoped so this doesn't affect the
-   shared .account-modal base, which the Playlists page's create/rename
-   popups also use. */
-.edit-account-modal {
-  background: #7b5fa8;
-}
-
-.edit-account-modal .account-modal-close {
-  color: #fff;
-}
-
-.edit-account-modal .account-modal-field label {
-  color: #fff;
-}
-
-.edit-account-modal .account-modal-input-icon {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.edit-account-modal .account-modal-radio-option {
-  color: #fff;
-}
-
-.edit-account-modal .account-modal-cancel {
-  color: rgba(255, 255, 255, 0.75);
-}
