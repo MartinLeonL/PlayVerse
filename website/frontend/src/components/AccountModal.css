@@ -183,5 +183,5 @@
    shared .account-modal base, which the Playlists page's create/rename
    popups also use. */
 .edit-account-modal {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(219, 39, 119, 0.06));
+  background: linear-gradient(135deg, #7c3aed, #db2777);
 }
