@@ -223,11 +223,18 @@ router.get("/search", async (req, res, next) => {
       case "music":
         result = await deezer.searchTracks(query);
         break;
+      case "artist":
+        result = await deezer.searchArtists(query);
+        break;
       default:
         return res.status(400).json({ message: "Invalid media type." });
     }
 
-    result.items = await attachUserScores(result.items, SEARCH_TYPE_TO_MEDIA_TYPE[type]);
+    // Artists aren't a rateable media type — no ratingsAggregate entries
+    // exist for them, so skip the lookup rather than attaching a
+    // meaningless always-empty userScore.
+    const mediaType = SEARCH_TYPE_TO_MEDIA_TYPE[type];
+    result.items = mediaType ? await attachUserScores(result.items, mediaType) : result.items;
     res.json(result);
   } catch (error) {
     next(error);
