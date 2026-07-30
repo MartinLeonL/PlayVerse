@@ -30,8 +30,8 @@ class MediaProvider {
 /// contract both the website and this app now use.
 class MediaItem {
   final String id;
-  final String type; // 'movie' | 'show' | 'game' | 'music'
-  final String tag; // display label: "Movie" | "Series" | "Game" | "Song"
+  final String type; // 'movie' | 'show' | 'game' | 'music' | 'artist'
+  final String tag; // display label: "Movie" | "Series" | "Game" | "Song" | "Artist"
   final String title;
   final String? artist; // music only
   final String posterImage;
@@ -121,7 +121,7 @@ class MediaItem {
   /// field (like an old saved playlist entry).
   static String? typeFromId(String mediaId) {
     final prefix = mediaId.split('-').first;
-    const valid = {'movie', 'show', 'game', 'music'};
+    const valid = {'movie', 'show', 'game', 'music', 'artist'};
     return valid.contains(prefix) ? prefix : null;
   }
 }
