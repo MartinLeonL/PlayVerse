@@ -63,6 +63,9 @@ class _SearchPageState extends State<SearchPage> {
     final shows = await MediaService().searchShows(query);
     final games = await MediaService().searchGames(query);
     final music = await MediaService().searchMusic(query);
+    // Artists can't be added to a playlist (they're not a media item),
+    // so skip searching for them entirely in "add to playlist" mode.
+    final artists = _isAddMode ? <MediaItem>[] : await MediaService().searchArtists(query);
 
     // If the user kept typing while this was in flight, a newer search
     // has already superseded it — drop this stale result.
@@ -73,6 +76,7 @@ class _SearchPageState extends State<SearchPage> {
     if (shows.isNotEmpty) results['Shows'] = shows;
     if (games.isNotEmpty) results['Games'] = games;
     if (music.isNotEmpty) results['Music'] = music;
+    if (artists.isNotEmpty) results['Artists'] = artists;
 
     setState(() {
       _results = results;
