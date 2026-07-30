@@ -13,7 +13,6 @@ class MediaService {
 
   MediaService._internal() {
     _dio = Dio(BaseOptions(
-      // TODO: replace with the real deployed web backend URL, same as api_service.dart
       baseUrl: 'https://playverseapp.onrender.com/api',
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 20),
@@ -126,6 +125,7 @@ class MediaService {
   Future<List<MediaItem>> searchShows(String query, {int page = 1}) => _search('shows', query, page: page);
   Future<List<MediaItem>> searchGames(String query, {int page = 1}) => _search('games', query, page: page);
   Future<List<MediaItem>> searchMusic(String query, {int page = 1}) => _search('music', query, page: page);
+  Future<List<MediaItem>> searchArtists(String query, {int page = 1}) => _search('artist', query, page: page);
 
   Future<List<MediaItem>> searchAll(String query) async {
     final results = await Future.wait([
@@ -133,6 +133,7 @@ class MediaService {
       searchShows(query),
       searchGames(query),
       searchMusic(query),
+      searchArtists(query),
     ]);
     return results.expand((list) => list).toList();
   }
