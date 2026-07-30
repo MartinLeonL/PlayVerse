@@ -8,7 +8,7 @@
 .account-card {
   width: 100%;
   max-width: 480px;
-  background: var(--pv-surface);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(219, 39, 119, 0.06));
   border-radius: 20px;
   box-shadow: var(--shadow);
   padding: 28px 32px;
