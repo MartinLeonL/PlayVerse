@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/media_item.dart';
 import '../pages/all_media_page.dart';
 import '../pages/media_detail_page.dart';
+import '../services/media_service.dart';
 import '../services/playlist_store.dart';
 import '../theme/app_colors.dart';
 import '../utils/format_score.dart';
@@ -17,15 +18,6 @@ class MediaRow extends StatelessWidget {
   // (the backend allows duplicate names).
   final String? playlistId;
   final VoidCallback? onDelete;
-  // Controlled collapse state — null means "not collapsible," always
-  // shown expanded (the default everywhere except the playlists page).
-  final bool? collapsed;
-  final VoidCallback? onToggleCollapse;
-  final VoidCallback? onRename;
-  // Optional leading widget in the header row — used to give playlist
-  // reordering a dedicated drag trigger, rather than making the whole
-  // row (which has its own tappable/scrollable content) draggable.
-  final Widget? dragHandle;
 
   const MediaRow({
     super.key,
@@ -36,10 +28,6 @@ class MediaRow extends StatelessWidget {
     this.isPlaylist = false,
     this.playlistId,
     this.onDelete,
-    this.collapsed,
-    this.onToggleCollapse,
-    this.onRename,
-    this.dragHandle,
   });
 
   @override
@@ -47,7 +35,6 @@ class MediaRow extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = screenWidth * 0.35;
     final cardHeight = cardWidth * 1.5;
-    final isCollapsed = collapsed ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,10 +43,6 @@ class MediaRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              if (dragHandle != null) ...[
-                dragHandle!,
-                const SizedBox(width: 4),
-              ],
               Expanded(
                 child: GestureDetector(
                   onTap: titleOpensAll
@@ -84,19 +67,6 @@ class MediaRow extends StatelessWidget {
                   ),
                 ),
               ),
-              if (onToggleCollapse != null)
-                IconButton(
-                  icon: Icon(isCollapsed ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up),
-                  onPressed: onToggleCollapse,
-                  tooltip: isCollapsed ? 'Expand' : 'Collapse',
-                ),
-              if (onRename != null)
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
-                  onPressed: onRename,
-                  tooltip: 'Rename',
-                  visualDensity: VisualDensity.compact,
-                ),
               if (onDelete != null)
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: AppColors.destructive),
@@ -105,37 +75,35 @@ class MediaRow extends StatelessWidget {
             ],
           ),
         ),
-        if (!isCollapsed) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            height: cardHeight + 45,
-            child: items.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text('Nothing here yet.', style: TextStyle(color: AppColors.textSecondary)),
-                  )
-                : ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    clipBehavior: Clip.none,
-                    itemCount: loop ? 10000 : items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index % items.length];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8, top: 8),
-                        child: MediaCard(
-                          item: item,
-                          width: cardWidth,
-                          height: cardHeight,
-                          isPlaylist: isPlaylist,
-                          playlistId: isPlaylist ? playlistId : null,
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          const SizedBox(height: 8),
-        ],
+        const SizedBox(height: 12),
+        SizedBox(
+          height: cardHeight + 45,
+          child: items.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text('Nothing here yet.', style: TextStyle(color: AppColors.textSecondary)),
+                )
+              : ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  clipBehavior: Clip.none,
+                  itemCount: loop ? 10000 : items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index % items.length];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8, top: 8),
+                      child: MediaCard(
+                        item: item,
+                        width: cardWidth,
+                        height: cardHeight,
+                        isPlaylist: isPlaylist,
+                        playlistId: isPlaylist ? playlistId : null,
+                      ),
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -251,6 +219,21 @@ class _MediaCardState extends State<MediaCard> {
     ).whenComplete(() {
       _removeOverlay();
     });
+  }
+
+  // Artists don't have their own rateable detail page (no score, no
+  // single release date, no providers) — tapping one instead shows
+  // their tracks, reusing the same search infra as a regular Music
+  // search rather than a dedicated artist endpoint/page.
+  Future<void> _openArtist(BuildContext context) async {
+    final tracks = await MediaService().searchMusic(widget.item.title);
+    if (!context.mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AllMediaPage(title: widget.item.title, items: tracks),
+      ),
+    );
   }
 
   void _confirmRemove(BuildContext context) {
@@ -564,6 +547,10 @@ class _MediaCardState extends State<MediaCard> {
             link: _layerLink,
             child: GestureDetector(
               onTap: () {
+                if (widget.item.type == 'artist') {
+                  _openArtist(context);
+                  return;
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => MediaDetailPage(item: widget.item)),
@@ -579,7 +566,8 @@ class _MediaCardState extends State<MediaCard> {
               onTapUp: (_) {
                 _removeOverlay();
               },
-              onLongPress: () {
+              // No "add to playlist" / "view details" apply to an artist.
+              onLongPress: widget.item.type == 'artist' ? null : () {
                 _showOptionsMenu(context);
               },
               child: Opacity(
