@@ -179,6 +179,8 @@ function Playlists() {
 
   // Applies to every playlist's grid at once.
   const [sortBy, setSortBy] = useState("");
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortLabel = PLAYLIST_SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label;
 
   // Playlist IDs whose grid is currently collapsed. Populated once
   // playlists finish loading (see loadCustomPlaylists) so every
@@ -541,25 +543,34 @@ function Playlists() {
 
         {customPlaylists.length > 0 && (
           <div className="playlists-toolbar">
-            <div className="playlists-sort-bar">
-              <label htmlFor="playlists-sort-select" className="playlists-sort-icon">
-                <ArrowUpDown size={14} />
-                Sort By
-              </label>
-
-              <select
-                id="playlists-sort-select"
-                className="playlists-sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                aria-label="Sort playlist items"
+            <div className="playlists-sort">
+              <button
+                type="button"
+                className="playlists-sort-btn"
+                onClick={() => setSortOpen((v) => !v)}
               >
-                {PLAYLIST_SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <ArrowUpDown size={14} />
+                Sort By: {sortLabel}
+                <ChevronDown size={16} />
+              </button>
+
+              {sortOpen && (
+                <div className="playlists-sort-dropdown">
+                  {PLAYLIST_SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={sortBy === opt.value ? "playlists-sort-option active" : "playlists-sort-option"}
+                      onClick={() => {
+                        setSortBy(opt.value);
+                        setSortOpen(false);
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
