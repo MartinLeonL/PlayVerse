@@ -14,7 +14,6 @@ const categories = [
   { key: "shows", label: "TV Series" },
   { key: "music", label: "Music" },
   { key: "games", label: "Games" },
-  { key: "artist", label: "Artists" },
 ];
 
 const sortOptions = [
@@ -174,11 +173,7 @@ function Search() {
             </div>
 
             <div className="search-tabs">
-              {categories
-                // Artists can't be added to a playlist, so don't offer
-                // that tab at all while in "add to playlist" mode.
-                .filter((c) => !(addToPlaylistId && c.key === "artist"))
-                .map((c) => (
+              {categories.map((c) => (
                 <button
                   key={c.key}
                   type="button"
