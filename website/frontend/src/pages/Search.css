@@ -139,8 +139,8 @@
   min-width: 200px;
   border-radius: 999px;
   padding: 0px 30px;
-  background: var(--pv-surface);
-  color: var(--pv-text);
+  background: #7b5fa8;
+  color: #fff;
   font-family: inherit;
   font-weight: 600;
   font-size: 15px;
@@ -148,12 +148,12 @@
 }
 
 #sort-icon {
-  color: var(--pv-purple-strong);
+  color: #fff;
   size: 16px;
 }
 
 .search-sort p {
-  color: var(--pv-purple-strong);
+  color: #fff;
   font-weight: 600;
   font-size: 15px;
 }
@@ -181,7 +181,7 @@
   padding: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
-  background: var(--pv-surface);
+  background: #7b5fa8;
   box-shadow: var(--shadow);
 }
 
@@ -191,7 +191,7 @@
   border-radius: 9px;
   padding: 10px 12px;
   background-color: transparent;
-  color: var(--pv-text);
+  color: rgba(255, 255, 255, 0.75);
   font-family: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -205,7 +205,8 @@
 }
 
 .search-sort-option.active {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
 }
 
 .search-grid {
