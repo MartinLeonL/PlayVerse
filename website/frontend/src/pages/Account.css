@@ -4,19 +4,18 @@
   padding: 60px 32px;
   display: flex;
   justify-content: center;
-  background: #7b5fa8;
 }
 .account-card {
   width: 100%;
   max-width: 480px;
-  background: #7b5fa8;
+  background: var(--pv-surface);
   border-radius: 20px;
   box-shadow: var(--shadow);
   padding: 28px 32px;
 }
 .account-card h1 {
   text-align: center;
-  color: #fff;
+  color: var(--pv-purple);
   font-size: 22px;
   margin: 0 0 16px;
 }
@@ -57,11 +56,11 @@
 .account-label {
   font-size: 13px;
   font-weight: 700;
-  color: #fff;
+  color: var(--pv-text);
 }
 .account-value {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--pv-text-muted);
 }
 .account-actions {
   display: flex;
