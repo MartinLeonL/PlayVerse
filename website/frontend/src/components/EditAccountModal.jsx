@@ -96,7 +96,7 @@ function EditAccountModal({
   return (
     <div className="account-modal-overlay" onClick={handleClose}>
       <div
-        className="account-modal edit-account-modal"
+        className="account-modal"
         onClick={(event) => event.stopPropagation()}
       >
         <button
