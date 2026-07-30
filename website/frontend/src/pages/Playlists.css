@@ -295,7 +295,7 @@
   min-width: 0;
   padding: 8px;
   border-radius: 18px;
-  background: var(--pv-surface);
+  background: var(--pv-purple-strong);
   border: 1px solid var(--pv-border);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -361,7 +361,7 @@
 .playlist-card > p {
   margin: 8px 0 0;
   font-size: 13px;
-  color: var(--pv-text);
+  color: #fff;
   font-weight: 600;
   line-height: 1.3;
 }
