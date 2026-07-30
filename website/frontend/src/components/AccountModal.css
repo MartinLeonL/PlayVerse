@@ -178,10 +178,3 @@
 .delete-modal-confirm:hover {
   background: #d43d42;
 }
-
-/* Edit-account modal specifically — scoped so this doesn't affect the
-   shared .account-modal base, which the Playlists page's create/rename
-   popups also use. */
-.edit-account-modal {
-  background: linear-gradient(135deg, #7c3aed, #db2777);
-}
