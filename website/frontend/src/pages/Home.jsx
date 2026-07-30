@@ -179,7 +179,14 @@ function Home() {
               <div className="hero-info">
                 <span className="hero-tag">{hero.tag}</span>
                 <h1>{hero.title}</h1>
-                <p className="hero-genre">{hero.genre || hero.genres?.join(" • ")}</p>
+                {/* The hero pulls from the cheap chart endpoint, not a
+                    per-item detail lookup, so `genre` here is really
+                    just the track's album title/"Single" — showing the
+                    artist instead is accurate; a real genre lookup per
+                    track isn't worth the cost for a rotating banner. */}
+                <p className="hero-genre">
+                  {hero.type === "music" ? hero.artist : hero.genre || hero.genres?.join(" • ")}
+                </p>
                 <div className="hero-meta">
                   <span>
                     <Calendar size={14} /> {hero.date}
