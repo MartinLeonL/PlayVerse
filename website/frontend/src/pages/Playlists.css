@@ -85,7 +85,7 @@
   align-items: center;
   gap: 6px;
   border: none;
-  background: var(--pv-purple-strong);
+  background: #7b5fa8;
   color: #fff;
   border-radius: 999px;
   padding: 10px 18px;
@@ -98,7 +98,7 @@
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  background: var(--pv-purple-strong);
+  background: #7b5fa8;
   border-radius: 12px;
   padding: 8px;
   display: flex;
@@ -143,7 +143,7 @@
   padding: 16px 18px;
   border: 1px solid var(--pv-border);
   border-radius: 18px;
-  background: var(--pv-surface);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(219, 39, 119, 0.06));
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 }
 
