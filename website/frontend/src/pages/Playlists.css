@@ -76,36 +76,56 @@
   margin-bottom: 14px;
 }
 
-.playlists-sort-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px 6px 12px;
-  border: 1px solid var(--pv-border);
-  border-radius: 999px;
-  background: var(--pv-surface);
+.playlists-sort {
+  position: relative;
 }
 
-.playlists-sort-icon {
+.playlists-sort-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--pv-purple-strong);
-  flex-shrink: 0;
+  border: none;
+  background: var(--pv-purple-strong);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
-.playlists-sort-select {
+.playlists-sort-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--pv-purple-strong);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  box-shadow: var(--shadow);
+  z-index: 5;
+}
+
+.playlists-sort-option {
   border: none;
   background: transparent;
-  color: var(--pv-text);
+  color: rgba(255, 255, 255, 0.75);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.playlists-sort-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.playlists-sort-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
   font-weight: 600;
-  font-size: 13px;
-  padding: 4px 2px;
-  outline: none;
 }
 
 .playlist-sections {
@@ -411,7 +431,11 @@
     justify-content: stretch;
   }
 
-  .playlists-sort-bar {
+  .playlists-sort {
+    width: 100%;
+  }
+
+  .playlists-sort-btn {
     width: 100%;
     justify-content: space-between;
   }
