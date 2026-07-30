@@ -248,7 +248,7 @@ function Login() {
                       <input
                         id="name"
                         type="text"
-                        placeholder="Enter name"
+                        placeholder="Enter first name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         required
@@ -263,7 +263,7 @@ function Login() {
                       <input
                         id="lastname"
                         type="text"
-                        placeholder="Enter lastname"
+                        placeholder="Enter last name"
                         value={lastname}
                         onChange={(e) => setLastname(e.target.value)}
                         required
