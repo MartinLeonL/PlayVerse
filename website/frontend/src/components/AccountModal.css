@@ -7,7 +7,6 @@
   justify-content: center;
   z-index: 100;
 }
-
 .account-modal {
   position: relative;
   width: 420px;
@@ -18,7 +17,6 @@
   padding: 32px;
   box-sizing: border-box;
 }
-
 .account-modal-close {
   position: absolute;
   top: 16px;
@@ -28,13 +26,11 @@
   color: var(--pv-text-muted);
   display: flex;
 }
-
 .account-modal-row {
   display: flex;
   gap: 16px;
   width: 100%;
 }
-
 .account-modal-field {
   flex: 1;
   min-width: 0;
@@ -44,17 +40,14 @@
   margin-bottom: 16px;
   box-sizing: border-box;
 }
-
 .account-modal-field.full {
   width: 100%;
 }
-
 .account-modal-field label {
   font-size: 13px;
   font-weight: 600;
   color: var(--pv-text);
 }
-
 .account-modal-field input {
   width: 100%;
   min-width: 0;
@@ -66,7 +59,6 @@
   color: var(--pv-text);
   outline: none;
 }
-
 .account-modal-input-icon {
   display: flex;
   align-items: center;
@@ -79,7 +71,6 @@
   width: 100%;
   box-sizing: border-box;
 }
-
 .account-modal-input-icon input {
   border: none;
   background: transparent;
@@ -90,7 +81,6 @@
   box-sizing: border-box;
   color: var(--pv-text);
 }
-
 .account-modal-toggle {
   border: none;
   background: transparent;
@@ -98,13 +88,11 @@
   display: flex;
   flex-shrink: 0;
 }
-
 .account-modal-radio-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .account-modal-radio-option {
   display: flex;
   align-items: center;
@@ -114,25 +102,21 @@
   color: var(--pv-text);
   cursor: pointer;
 }
-
 .account-modal-radio-option input {
   width: auto;
   accent-color: var(--pv-purple-strong);
 }
-
 .account-modal-error {
   color: #d33;
   font-size: 13px;
   margin: -8px 0 12px;
 }
-
 .account-modal-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: 8px;
 }
-
 .account-modal-cancel {
   border: none;
   background: transparent;
@@ -140,7 +124,6 @@
   font-weight: 600;
   font-size: 14px;
 }
-
 .account-modal-save {
   border: none;
   background: var(--pv-purple-strong);
@@ -149,13 +132,10 @@
   padding: 10px 24px;
   font-weight: 600;
 }
-
 .account-modal-save:hover {
   background: var(--pv-purple);
 }
-
 /* Delete confirmation variant */
-
 .delete-modal {
   width: 380px;
   max-width: calc(100vw - 32px);
@@ -164,26 +144,22 @@
   box-shadow: var(--shadow);
   padding: 24px 28px;
 }
-
 .delete-modal h3 {
   margin: 0 0 10px;
   font-size: 17px;
   color: var(--pv-text);
 }
-
 .delete-modal p {
   margin: 0 0 20px;
   font-size: 13px;
   line-height: 1.5;
   color: var(--pv-text-muted);
 }
-
 .delete-modal-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-
 .delete-modal-cancel {
   border: none;
   background: transparent;
@@ -191,7 +167,6 @@
   font-weight: 600;
   font-size: 14px;
 }
-
 .delete-modal-confirm {
   border: none;
   background: #e5484d;
@@ -200,7 +175,33 @@
   padding: 10px 20px;
   font-weight: 600;
 }
-
 .delete-modal-confirm:hover {
   background: #d43d42;
+}
+
+/* Edit-account modal specifically — scoped so this doesn't affect the
+   shared .account-modal base, which the Playlists page's create/rename
+   popups also use. */
+.edit-account-modal {
+  background: #7b5fa8;
+}
+
+.edit-account-modal .account-modal-close {
+  color: #fff;
+}
+
+.edit-account-modal .account-modal-field label {
+  color: #fff;
+}
+
+.edit-account-modal .account-modal-input-icon {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.edit-account-modal .account-modal-radio-option {
+  color: #fff;
+}
+
+.edit-account-modal .account-modal-cancel {
+  color: rgba(255, 255, 255, 0.75);
 }
