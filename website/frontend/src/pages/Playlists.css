@@ -164,7 +164,7 @@
   padding: 18px;
   border: 1px solid var(--pv-border);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(219, 39, 119, 0.06));
   backdrop-filter: blur(6px);
   transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -295,7 +295,7 @@
   min-width: 0;
   padding: 8px;
   border-radius: 18px;
-  background: var(--pv-purple-strong);
+  background: #7b5fa8;
   border: 1px solid var(--pv-border);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
